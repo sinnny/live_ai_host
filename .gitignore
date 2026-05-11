@@ -1,0 +1,25 @@
+# Secrets
+.env
+.env.local
+
+# Generated outputs (videos, image variants, evaluation artifacts)
+outputs/
+
+# Local model weights (huge, not source)
+models/
+tools/ComfyUI/
+
+# Logs
+logs/
+
+# Python
+__pycache__/
+*.pyc
+*.pyo
+
+# Jupyter
+.ipynb_checkpoints/
+*.ipynb_checkpoints/
+
+# macOS
+.DS_Store
