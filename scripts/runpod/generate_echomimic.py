@@ -66,7 +66,8 @@ def default_video_length(resolution: int) -> int:
 
 
 def run_flash(test_name: str, image_path: Path, audio_path: Path,
-              resolution: int, video_length: int, seed: int, prompt: str) -> dict:
+              resolution: int, video_length: int, seed: int,
+              prompt: str, negative_prompt: str) -> dict:
     save_dir = OUT_ROOT / f"flash_{resolution}" / test_name
     save_dir.mkdir(parents=True, exist_ok=True)
 
@@ -101,7 +102,7 @@ def run_flash(test_name: str, image_path: Path, audio_path: Path,
         "--ring_degree", "1",
         "--prompt", prompt,
         "--add_prompt", "",
-        "--negative_prompt", "",
+        "--negative_prompt", negative_prompt,
     ]
 
     print(f"[{test_name}] running infer_flash.py (cwd={ECHOMIMIC_DIR})")
@@ -123,6 +124,7 @@ def run_flash(test_name: str, image_path: Path, audio_path: Path,
         "wall_seconds": round(dt, 1),
         "exit_code": proc.returncode,
         "prompt": prompt,
+        "negative_prompt": negative_prompt,
     }
 
 
@@ -136,6 +138,8 @@ def main():
                    help="sliding-window chunk size; default 65@1024, 81@768. Drop if OOM.")
     p.add_argument("--seed", type=int, default=43)
     p.add_argument("--prompt", default=DEFAULT_PROMPT)
+    p.add_argument("--negative-prompt", default="",
+                   help="passed to infer_flash.py --negative_prompt; default empty (run_flash.sh default)")
     args = p.parse_args()
 
     if args.variant == "preview":
@@ -177,6 +181,7 @@ def main():
                 video_length=args.video_length,
                 seed=args.seed,
                 prompt=args.prompt,
+                negative_prompt=args.negative_prompt,
             )
         except Exception as e:
             meta = {"test_name": t, "error": repr(e)}
