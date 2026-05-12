@@ -80,6 +80,11 @@ uv pip install --python .venv/bin/python --reinstall \
 echo "  pinning numpy<2 (transformers→tensorflow→ml_dtypes binary compat)..."
 uv pip install --python .venv/bin/python "numpy<2"
 
+# Repo's requirements.txt is incomplete — infer_flash.py imports `pyloudnorm` (audio
+# loudness normalization) which isn't listed. Install explicitly.
+echo "  installing missing repo deps not in requirements.txt..."
+uv pip install --python .venv/bin/python pyloudnorm
+
 # chinese-wav2vec2-base lives only on ModelScope per the repo README.
 uv pip install --python .venv/bin/python modelscope huggingface_hub
 
