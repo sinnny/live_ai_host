@@ -1,0 +1,246 @@
+{
+  "_comment": "API-format ComfyUI workflow for PuLID-Flux. Patched for RunPod CUDA setup. generate.py parameterizes the nodes in _template_targets per iteration.",
+  "_template_targets": {
+    "positive_prompt_node_id": "107",
+    "seed_node_id": "111",
+    "steps_node_id": "110"
+  },
+  "workflow": {
+    "123": {
+      "class_type": "DualCLIPLoader",
+      "inputs": {
+        "clip_name1": "t5xxl_fp8_e4m3fn.safetensors",
+        "clip_name2": "clip_l.safetensors",
+        "type": "flux"
+      }
+    },
+    "108": {
+      "class_type": "VAELoader",
+      "inputs": {
+        "vae_name": "flux-vae-bf16.safetensors"
+      }
+    },
+    "122": {
+      "class_type": "UNETLoader",
+      "inputs": {
+        "unet_name": "flux1-dev-fp8-e4m3fn.safetensors",
+        "weight_dtype": "fp8_e4m3fn"
+      }
+    },
+    "107": {
+      "class_type": "CLIPTextEncode",
+      "inputs": {
+        "text": "A person sits in a cafe, smiling warmly at the camera, captured in a mid-shot",
+        "clip": [
+          "123",
+          0
+        ]
+      }
+    },
+    "114": {
+      "class_type": "PulidFluxModelLoader",
+      "inputs": {
+        "pulid_file": "pulid_flux_v0.9.1.safetensors"
+      }
+    },
+    "124": {
+      "class_type": "PulidFluxInsightFaceLoader",
+      "inputs": {
+        "provider": "CUDA"
+      }
+    },
+    "113": {
+      "class_type": "EmptySD3LatentImage",
+      "inputs": {
+        "width": 768,
+        "height": 1024,
+        "batch_size": 1
+      }
+    },
+    "111": {
+      "class_type": "RandomNoise",
+      "inputs": {
+        "noise_seed": 385539500762983
+      }
+    },
+    "112": {
+      "class_type": "FluxGuidance",
+      "inputs": {
+        "guidance": 2.5,
+        "conditioning": [
+          "107",
+          0
+        ]
+      }
+    },
+    "119": {
+      "class_type": "PulidFluxEvaClipLoader",
+      "inputs": {}
+    },
+    "109": {
+      "class_type": "KSamplerSelect",
+      "inputs": {}
+    },
+    "178": {
+      "class_type": "ApplyPulidFlux",
+      "inputs": {
+        "weight": 1,
+        "start_at": 0,
+        "end_at": 1,
+        "model": [
+          "122",
+          0
+        ],
+        "pulid_flux": [
+          "114",
+          0
+        ],
+        "eva_clip": [
+          "119",
+          0
+        ],
+        "face_analysis": [
+          "124",
+          0
+        ],
+        "image": [
+          "120",
+          0
+        ],
+        "options": [
+          "197",
+          0
+        ]
+      }
+    },
+    "115": {
+      "class_type": "BasicGuider",
+      "inputs": {
+        "model": [
+          "178",
+          0
+        ],
+        "conditioning": [
+          "112",
+          0
+        ]
+      }
+    },
+    "110": {
+      "class_type": "BasicScheduler",
+      "inputs": {
+        "steps": "simple",
+        "denoise": 28,
+        "model": [
+          "178",
+          0
+        ]
+      }
+    },
+    "116": {
+      "class_type": "SamplerCustomAdvanced",
+      "inputs": {
+        "noise": [
+          "111",
+          0
+        ],
+        "guider": [
+          "115",
+          0
+        ],
+        "sampler": [
+          "109",
+          0
+        ],
+        "sigmas": [
+          "110",
+          0
+        ],
+        "latent_image": [
+          "113",
+          0
+        ]
+      }
+    },
+    "120": {
+      "class_type": "LoadImage",
+      "inputs": {
+        "image": "project_photos/hero.png"
+      }
+    },
+    "117": {
+      "class_type": "VAEDecode",
+      "inputs": {
+        "samples": [
+          "116",
+          0
+        ],
+        "vae": [
+          "108",
+          0
+        ]
+      }
+    },
+    "199": {
+      "class_type": "PreviewImage",
+      "inputs": {
+        "images": [
+          "198",
+          0
+        ]
+      }
+    },
+    "118": {
+      "class_type": "PreviewImage",
+      "inputs": {
+        "images": [
+          "117",
+          0
+        ]
+      }
+    },
+    "197": {
+      "class_type": "PulidFluxOptions",
+      "inputs": {
+        "input_faces_order": "large-small",
+        "input_faces_index": 0,
+        "input_faces_align_mode": 1
+      }
+    },
+    "200": {
+      "class_type": "PreviewImage",
+      "inputs": {
+        "images": [
+          "198",
+          1
+        ]
+      }
+    },
+    "198": {
+      "class_type": "PulidFluxFaceDetector",
+      "inputs": {
+        "face_analysis": [
+          "124",
+          0
+        ],
+        "image": [
+          "120",
+          0
+        ],
+        "options": [
+          "197",
+          0
+        ]
+      }
+    },
+    "206": {
+      "class_type": "PreviewImage",
+      "inputs": {
+        "images": [
+          "198",
+          2
+        ]
+      }
+    }
+  }
+}
