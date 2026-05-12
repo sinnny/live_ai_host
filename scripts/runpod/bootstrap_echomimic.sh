@@ -23,14 +23,21 @@ echo "PROJECT_ROOT:  $PROJECT_ROOT"
 echo "ECHOMIMIC_DIR: $ECHOMIMIC_DIR"
 echo "============================================================"
 
-# ----- 1. GPU sanity check -----
+# ----- 1. GPU sanity check + system deps -----
 echo ""
-echo "==> [1/8] GPU sanity check"
+echo "==> [1/8] GPU sanity check + system deps (ffmpeg)"
 if command -v nvidia-smi &> /dev/null; then
   nvidia-smi --query-gpu=name,memory.total,driver_version --format=csv
 else
   echo "WARNING: nvidia-smi not found — is this a GPU pod?" >&2
 fi
+# ffmpeg is needed by generate_echomimic.py to resample our 24 kHz wav → 16 kHz for wav2vec2.
+# RunPod PyTorch images don't ship with it.
+if ! command -v ffmpeg &> /dev/null; then
+  echo "  installing ffmpeg via apt..."
+  apt-get update -qq && apt-get install -y -qq ffmpeg
+fi
+ffmpeg -version | head -1
 
 # ----- 2. Install uv -----
 echo ""
