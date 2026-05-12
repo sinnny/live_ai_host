@@ -1,0 +1,47 @@
+#!/usr/bin/env bash
+# Project dispatcher — run common commands from project root.
+#
+# Usage: ./dev <command> [args...]
+
+set -euo pipefail
+
+PROJECT_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+
+usage() {
+  cat <<'EOF'
+Usage: ./dev <command> [args...]
+
+Commands:
+  comfyui [args]      Launch ComfyUI on Mac MPS
+                      Pass-through flags: --listen, --port 8189, --cpu, ...
+  download-weights    Download Phase 0 model weights (~18 GB) into ComfyUI's
+                      models/ tree. Idempotent + resumable.
+  help                Show this help
+
+Examples:
+  ./dev comfyui
+  ./dev comfyui --port 8189
+  ./dev download-weights
+EOF
+}
+
+cmd="${1:-help}"
+shift || true
+
+case "$cmd" in
+  comfyui)
+    exec "$PROJECT_ROOT/scripts/comfyui.sh" "$@"
+    ;;
+  download-weights)
+    exec "$PROJECT_ROOT/scripts/download_weights.sh" "$@"
+    ;;
+  help|-h|--help|"")
+    usage
+    ;;
+  *)
+    echo "Unknown command: $cmd" >&2
+    echo "" >&2
+    usage >&2
+    exit 1
+    ;;
+esac

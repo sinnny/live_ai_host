@@ -9,6 +9,9 @@ outputs/
 models/
 tools/ComfyUI/
 
+# uv project venv (recreated via `uv sync`)
+.venv/
+
 # Logs
 logs/
 

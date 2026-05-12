@@ -26,12 +26,16 @@ This is the **do** doc. The plan is the **why** doc. When in doubt about reasoni
 ## Stage 0 — Environment Setup (Evening 1, ~2h + overnight downloads)
 *Plan: §Stage 0 — Environment Setup*
 
-### 0.1 Conda env + core deps
-- [ ] `conda create -n live-ai-host python=3.11 -y && conda activate live-ai-host`
+### 0.1 uv project + core deps
+*Switched from conda → uv: faster installs, `uv.lock` is hash-pinned + fully reproducible, and `uv add`/`uv run` don't need a manual `activate` step. The package list is identical.*
+
 - [ ] `cd /Users/shinheehwang/Desktop/projects/00_live_ai_host/`
-- [ ] Run the pip install line **with `numpy<2` pin added**:
+- [ ] `uv init --bare --python 3.11 --vcs none --name live-ai-host` → creates `pyproject.toml`
+- [ ] `echo "3.11" > .python-version` → pin Python version for `uv run`
+- [ ] Add `.venv/` to `.gitignore` (the venv is local; recreated via `uv sync`)
+- [ ] Add deps (creates `.venv/`, writes `uv.lock`):
   ```bash
-  pip install \
+  uv add \
     diffusers transformers accelerate \
     "numpy<2" torch torchvision torchaudio \
     pillow pandas \
@@ -39,9 +43,11 @@ This is the **do** doc. The plan is the **why** doc. When in doubt about reasoni
     fal-client python-dotenv \
     requests pyyaml
   ```
-- [ ] `python -c "import numpy; print(numpy.__version__)"` → starts with `1.`
-- [ ] `python -c "import torch; print(torch.__version__, torch.backends.mps.is_available())"` → version + `True`
-- [ ] `python -c "import fal_client, diffusers, transformers, PIL; print('ok')"` → `ok`
+- [ ] `uv run python -c "import numpy; print(numpy.__version__)"` → starts with `1.`
+- [ ] `uv run python -c "import torch; print(torch.__version__, torch.backends.mps.is_available())"` → version + `True`
+- [ ] `uv run python -c "import fal_client, diffusers, transformers, PIL; print('ok')"` → `ok`
+
+**uv gotcha:** when adding more packages later, use `uv add <pkg>` (tracked in `pyproject.toml`), not `uv pip install <pkg>` (untracked, blown away on next `uv sync`).
 
 ### 0.2 Project skeleton
 - [ ] Create directory structure (`inputs/`, `outputs/stage{1..5}_*/`, `notebooks/`, `comfy_workflows/`, `scripts/`, `logs/`)
@@ -50,21 +56,49 @@ This is the **do** doc. The plan is the **why** doc. When in doubt about reasoni
 - [ ] `git init` if not already done
 
 ### 0.3 ComfyUI install
+*ComfyUI gets its OWN venv inside `tools/ComfyUI/.venv/` — separate from the project's `.venv/` — so its hundreds of deps (and custom node deps later) don't pollute our `pyproject.toml`/`uv.lock` or risk conflicting with our torch/diffusers versions.*
+
 - [ ] Clone ComfyUI to `tools/ComfyUI/` (NOT `models/` — that's reserved for ComfyUI's own model dir)
-- [ ] `cd tools/ComfyUI && pip install -r requirements.txt`
+- [ ] `cd tools/ComfyUI && uv venv --python 3.11` → creates `tools/ComfyUI/.venv/`
+- [ ] `source .venv/bin/activate` (or use `uv pip --python .venv/bin/python install ...`)
+- [ ] `uv pip install -r requirements.txt`
 - [ ] `PYTORCH_ENABLE_MPS_FALLBACK=1 python main.py --force-fp16` launches without error
 - [ ] Browser opens `http://localhost:8188` and loads the ComfyUI workspace
 - [ ] Stop with Ctrl+C
+- [ ] `deactivate` (return to your normal shell; the project's `.venv/` is reached via `uv run` from project root)
+
+**From now on, launch ComfyUI via the project dispatcher:**
+```bash
+./dev comfyui                  # default
+./dev comfyui --listen         # LAN access
+./dev comfyui --port 8189      # custom port
+./dev comfyui --cpu            # fallback if MPS misbehaves
+```
+Stop with Ctrl+C. The dispatcher (`./dev`) routes to `scripts/comfyui.sh`, which handles cd + venv + MPS fallback + fp16 flags automatically. Run `./dev help` to list available subcommands.
 
 ### 0.4 PuLID-Flux + weights
 - [ ] Install ComfyUI-Manager custom node (if not bundled)
-- [ ] Via ComfyUI Manager, install **ComfyUI-PuLID-Flux** custom node
+- [ ] Via ComfyUI Manager, install **ComfyUI_PuLID_Flux_ll** by **lldacing** (search "pulid flux" in Manager → ID 165)
+  - **Identity-preservation license note (informational, not a blocker for Phase 0):** PuLID's default face embedder is InsightFace antelopev2 (CC BY-NC 4.0, non-commercial). Using it in Phase 0 is correct experimental practice — Phase 0 evaluates *talking-head models* (Stage 4), and Stage 2 just generates inputs; best-quality inputs minimize confounding. The commercial production stack (FaceNet swap via KY-2000's fork, Flux Kontext Pro on fal, or commercial InsightFace license) is a Phase 1 concern. Document in DECISION.md.
+  - Alternative forks visible in Manager search: `sipie800/ComfyUI-PuLID-Flux-Enhanced` (fork of balazik original), `KY-2000/ComfyUI_PuLID_Flux_ll_FaceNet` (commercial-safe via FaceNet, only 2 stars). Skip unless #165 fails.
+- [ ] **After Manager install, fix the missing `facenet-pytorch` dep** — it's commented out of `requirements.txt` (because it pins `torch<2.3`) but the node code still imports it. Without this, the node shows `IMPORT FAILED` in Manager UI:
+  ```bash
+  cd tools/ComfyUI
+  uv pip install --python .venv/bin/python --no-deps facenet-pytorch
+  ```
+  `--no-deps` is required so it doesn't downgrade your torch. Restart ComfyUI after.
 - [ ] Restart ComfyUI; PuLID-Flux nodes appear in the right-click menu
-- [ ] **Start downloads (long-running, kick off and let them run):**
-  - [ ] Flux schnell checkpoint → `tools/ComfyUI/models/checkpoints/`
-  - [ ] PuLID weights → location specified by the custom node README
-  - [ ] CLIP / VAE / encoders required by PuLID-Flux workflow (the node's README lists them)
-- [ ] All downloads complete; restart ComfyUI; no missing-weights errors in console
+- [ ] **Start downloads via `./dev download-weights`** (~18 GB, kick off and let it run; resumable + idempotent)
+  - **NOTE:** Plan said "Flux schnell" but PuLID-Flux requires **Flux dev** (PuLID was trained on dev's CFG; schnell is distilled CFG-free). Flux dev is non-commercial license (FLUX.1-dev license) — same Phase 1 caveat as InsightFace, document in DECISION.md.
+  - **For Mac M4 Pro 24 GB:** use **fp8 quantized** (~12 GB VRAM); full fp16 won't fit alongside ComfyUI + OS.
+  - Downloads handled by `scripts/download_weights.sh`:
+    - Flux dev fp8 e4m3fn (~12 GB) → `tools/ComfyUI/models/diffusion_models/`
+    - T5XXL fp8 text encoder (~5 GB) → `models/text_encoders/`
+    - CLIP-L text encoder (~250 MB) → `models/text_encoders/`
+    - Flux VAE bf16 (~335 MB) → `models/vae/` (from `Kijai/flux-fp8/flux-vae-bf16.safetensors` — `Comfy-Org/flux1-schnell` doesn't contain a VAE, only the UNet)
+    - PuLID-Flux v0.9.1 (~1.2 GB) → `models/pulid/`
+  - Auto-downloaded by node on first workflow run (no manual step): EVA-CLIP, InsightFace antelopev2, facexlib parsing
+- [ ] All downloads complete; restart ComfyUI (`./dev comfyui`); no missing-weights errors in console
 
 ### 0.5 fal.ai auth smoke test
 - [ ] `python -c "from dotenv import load_dotenv; load_dotenv(); import os; print(bool(os.getenv('FAL_KEY')))"` → `True`
@@ -81,8 +115,12 @@ This is the **do** doc. The plan is the **why** doc. When in doubt about reasoni
 - [ ] Check fal.ai dashboard: spend incremented by ~$0.003
 
 ### 0.6 Lock environment
-- [ ] `pip freeze > requirements-lock.txt`
-- [ ] `requirements-lock.txt` is non-empty and committed to git
+*With uv project mode, `pyproject.toml` (declared deps) + `uv.lock` (resolved + hash-pinned graph) ARE the lock file. No separate `requirements-lock.txt` needed — `uv.lock` is more reproducible than `pip freeze` (content hashes per wheel).*
+
+- [ ] Verify `pyproject.toml` exists and lists the deps you `uv add`-ed
+- [ ] Verify `uv.lock` exists and is non-empty (~2000+ lines for this stack)
+- [ ] Commit BOTH `pyproject.toml` and `uv.lock` to git
+- [ ] Anyone (or future-you) can recreate the exact env via `uv sync`
 - [ ] Update plan's Stage 0 status: ✅ Done
 
 **Stage 0 spend so far: ~$0.003**

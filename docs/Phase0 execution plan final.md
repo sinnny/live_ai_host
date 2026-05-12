@@ -50,7 +50,7 @@ These were debated and resolved. They are not open questions.
  
 - **Account URL:** [fal.ai](https://fal.ai)
 - **Models used:** Flux schnell, EchoMimic v3, p-video-avatar, Omnihuman v1.5, Kling Avatar v2 Pro (full list with slugs in Stage 4)
-- **SDK:** `pip install fal-client`
+- **SDK:** `uv add fal-client` (Python package on PyPI)
 - **Auth:** `FAL_KEY` environment variable (stored in `.env`)
 - **Pricing model:** Pay-per-second for video, pay-per-image for image generation. Verified pricing per model in each stage.
 ### Why fal-only, not multi-platform
@@ -113,7 +113,10 @@ Hard ceiling: **$50** (master escape trigger).
 ├── scripts/
 │   └── fal_call.py           # Reusable fal.ai caller
 ├── logs/
-└── requirements-lock.txt     # Frozen environment for reproducibility
+├── pyproject.toml            # Project deps (uv-managed; committed)
+├── uv.lock                   # Hash-pinned resolved deps for reproducibility (committed)
+├── .python-version           # Pins Python 3.11 for `uv run`
+└── .venv/                    # Local install (gitignored; recreated via `uv sync`)
 ```
  
 ---
@@ -146,35 +149,46 @@ Working Python environment + ComfyUI on Mac + fal.ai access. Nothing inferential
 Setup only. No model inference in this stage.
  
 ### Steps
+
+> **Tooling note:** Stage 0 uses **uv** (Astral's package manager), not conda. Same Python (3.11), same packages, but: 10-100× faster installs, hash-pinned reproducible `uv.lock`, no manual `activate` (uv handles env isolation per-command via `uv run` / `uv add`).
  
 ```bash
-# 1. Single conda env
-conda create -n live-ai-host python=3.11 -y
-conda activate live-ai-host
- 
-# 2. Project dir + core deps
+# 1. Initialize uv project (creates pyproject.toml; --bare = no auto-generated README/main.py)
 cd /Users/shinheehwang/Desktop/projects/00_live_ai_host/
-pip install \
+uv init --bare --python 3.11 --vcs none --name live-ai-host
+echo "3.11" > .python-version
+
+# 2. Add core deps (downloads ~3-5 GB; creates .venv/ and uv.lock)
+uv add \
   diffusers transformers accelerate \
-  torch torchvision torchaudio \
-  pillow numpy pandas \
+  "numpy<2" torch torchvision torchaudio \
+  pillow pandas \
   jupyterlab ipykernel \
   fal-client python-dotenv \
   requests pyyaml
- 
+
 # Numpy < 2.x for downstream model compatibility (preventive guard from prior SadTalker pain).
  
-# 3. ComfyUI for local image gen
-mkdir -p models/ && cd models/
+# 3. ComfyUI for local image gen (separate venv inside tools/ComfyUI/)
+mkdir -p tools/ && cd tools/
 git clone https://github.com/comfyanonymous/ComfyUI
-cd ComfyUI && pip install -r requirements.txt
-python main.py --force-fp16   # UI at http://localhost:8188, Ctrl+C to stop
+cd ComfyUI
+uv venv --python 3.11          # creates tools/ComfyUI/.venv/ (separate from project venv)
+source .venv/bin/activate
+uv pip install -r requirements.txt
+PYTORCH_ENABLE_MPS_FALLBACK=1 python main.py --force-fp16   # UI at http://localhost:8188, Ctrl+C
+deactivate
+cd ../..
  
-# 4. PuLID + Flux schnell weights for ComfyUI
-# - Install ComfyUI-PuLID-Flux via ComfyUI Manager
-# - Download Flux schnell checkpoint → models/ComfyUI/models/checkpoints/
-# - Download PuLID weights → location custom node specifies
-# - This is 20-40GB. Start before bed if needed.
+# 4. PuLID + Flux dev fp8 weights for ComfyUI
+# - Install ComfyUI-Manager (custom node), then via Manager install ComfyUI_PuLID_Flux_ll (lldacing)
+# - After install, manually run: cd tools/ComfyUI && uv pip install --python .venv/bin/python --no-deps facenet-pytorch
+#   (the node's requirements.txt has it commented out due to a torch<2.3 pin; without it the node IMPORT FAILED)
+# - Download weights via: ./dev download-weights  (~18 GB total)
+#   * NOTE: PuLID-Flux requires Flux DEV (not schnell as originally planned) — PuLID needs CFG that
+#     schnell distilled away. Flux dev is non-commercial license — Phase 1 caveat alongside InsightFace.
+#   * fp8 quantized for Mac M4 Pro 24 GB (full fp16 ~22 GB won't fit alongside OS + ComfyUI).
+#   * Auto-downloaded on first workflow run: EVA-CLIP, InsightFace antelopev2, facexlib parsing.
  
 # 5. Set up .env
 cat > .env <<EOF
@@ -182,19 +196,22 @@ FAL_KEY=your_fal_key_here
 ANTHROPIC_API_KEY=sk-ant-xxx
 EOF
  
-# 6. Lock environment
-pip freeze > requirements-lock.txt
+# 6. Lock environment — uv project mode auto-writes uv.lock on every `uv add`.
+#    pyproject.toml + uv.lock together ARE the lock. Commit both to git.
+#    To recreate the env from scratch later: `uv sync`.
 ```
+
+**uv gotcha:** when adding more packages later, use `uv add <pkg>` (tracked in `pyproject.toml`), not `uv pip install <pkg>` (untracked, wiped on next `uv sync`).
  
 ### Stage 0 Verification — all must be true
  
-1. `python -c "import torch; print(torch.__version__, torch.backends.mps.is_available())"` → version, `True`
-2. `python -c "import fal_client, diffusers, transformers, PIL; print('ok')"` → `ok`
-3. `python -m jupyter lab` opens successfully
-4. ComfyUI loads at `localhost:8188` without errors
+1. `uv run python -c "import torch; print(torch.__version__, torch.backends.mps.is_available())"` → version, `True`
+2. `uv run python -c "import fal_client, diffusers, transformers, PIL; print('ok')"` → `ok`
+3. `uv run jupyter lab` opens successfully
+4. ComfyUI loads at `localhost:8188` without errors (from `tools/ComfyUI/.venv` activated shell)
 5. PuLID custom node visible in ComfyUI node menu
 6. fal.ai authentication test passes — running a trivial fal call (e.g. a single Flux schnell image) returns successfully
-7. `requirements-lock.txt` exists and is non-empty
+7. `pyproject.toml` and `uv.lock` exist, non-empty, and committed to git
 ### Stage 0 Escape Triggers
  
 | If this fails | Escape to |
@@ -277,9 +294,10 @@ If any fail, redo. **Stage 2 cannot fix a bad hero shot.**
  
 | Tier | Model | License | Where it runs | Cost | Notes |
 |---|---|---|---|---|---|
-| **OSS primary** | **PuLID + Flux schnell** | Apache 2.0 | Local ComfyUI workflow | $0 | The intended Phase 2 self-host approach. Accepts up to 4 reference images for identity guidance. |
-| **OSS alternative** | **InstantID + Flux schnell** | Apache 2.0 | Local ComfyUI workflow | $0 | Different identity-preservation approach. Sometimes better on Asian faces. |
-| **Paid premium** | **Flux Kontext Pro** | Closed | `fal-ai/flux-pro/kontext` | $0.04/img | Stronger identity lock if PuLID drifts. 25 variants ≈ $1. |
+| **OSS primary** | **PuLID + Flux schnell** | Code Apache 2.0; **runtime stack non-commercial** (InsightFace antelopev2 CC BY-NC 4.0) | Local ComfyUI workflow | $0 | The intended Phase 2 self-host approach. Accepts up to 4 reference images for identity guidance. **Phase 0 uses InsightFace for cleanest Stage 4 input quality (best-tools-for-research principle); Phase 1 commercial stack TBD — see Phase 1 escape options below.** |
+| **OSS alternative** | **InstantID + Flux schnell** | Code Apache 2.0; **same InsightFace dependency** as PuLID | Local ComfyUI workflow | $0 | Different identity-preservation approach. Sometimes better on Asian faces. **Note:** does not solve the InsightFace license issue — same upstream face embedder. |
+| **OSS commercial-safe** | **ComfyUI_PuLID_Flux_ll_FaceNet** (KY-2000) | Apache 2.0 + FaceNet (commercial-OK) | Local ComfyUI workflow | $0 | Drop-in PuLID swap of InsightFace → FaceNet. Only 2 stars (unproven). Phase 1 evaluation candidate, not Phase 0. |
+| **Paid premium** | **Flux Kontext Pro** | Closed | `fal-ai/flux-pro/kontext` | $0.04/img | Stronger identity lock if PuLID drifts. Also the cleanest commercial path for Phase 1 if OSS-commercial route fails. 25 variants ≈ $1. |
  
 ### Procedure
  
@@ -623,7 +641,9 @@ If the entire plan is breaking down:
 - `outputs/stage5_evaluation/DECISION.md` — the deliverable
 - `scripts/fal_call.py` — reusable fal.ai caller
 - `comfy_workflows/pulid_flux.json` — saved ComfyUI workflow
-- `requirements-lock.txt` — frozen environment
+- `pyproject.toml` — project deps (uv-managed, committed)
+- `uv.lock` — hash-pinned resolved deps for reproducibility (committed)
+- `.python-version` — pins Python 3.11
 ---
  
 ## What This Plan Deliberately Excludes
