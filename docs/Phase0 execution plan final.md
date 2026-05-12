@@ -127,8 +127,8 @@ Update this table at the end of each evening. Honest status, not aspirational.
  
 | Stage | Status | Date Started | Date Completed | Notes |
 |---|---|---|---|---|
-| **Stage 0** — Environment setup | ⬜ Not started | — | — | — |
-| **Stage 1** — Hero shot | ⬜ Not started | — | — | — |
+| **Stage 0** — Environment setup | ✅ Done | 2026-05-11 | 2026-05-12 | uv project (not conda); ComfyUI v0.21 in tools/; lldacing PuLID-Flux; Flux dev fp8 + encoders + VAE + PuLID weights (~17 GB); ./dev dispatcher. **0.5 fal smoke test deferred** until fal.ai account funded — runs in ~1 min. |
+| **Stage 1** — Hero shot | ✅ Done | 2026-05-12 | 2026-05-12 | Path A — picked kim_5 (only one with broadcast-headshot composition: direct gaze, gentle smile, even lighting, clean bg). Cropped 620x620 face-centered, LANCZOS upscaled to 1024x1024 → `inputs/photos/hero.png`. Resolution caveat: native source 620x750 (informative pixels), upscaled for ComfyUI workflow compat. Revisit with AI upscale if Stage 2 quality is weak. |
 | **Stage 2** — Identity variants | ⬜ Not started | — | — | — |
 | **Stage 3** — Driving audio | ⬜ Not started | — | — | — |
 | **Stage 4** — Talking-head generation | ⬜ Not started | — | — | — |
