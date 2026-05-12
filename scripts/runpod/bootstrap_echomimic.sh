@@ -100,19 +100,20 @@ else
   echo "  [flash 1/3] chinese-wav2vec2-base already downloaded (skip)"
 fi
 
-# Flash transformer — single file from echomimicv3-flash-pro subdir
+# Flash transformer + config — flat under echomimicv3-flash-pro/ in the repo,
+# our local target dir is flash/transformer/ (matches infer_flash.py's --transformer_path).
 FLASH_TX="$ECHOMIMIC_DIR/flash/transformer/diffusion_pytorch_model.safetensors"
-if [ ! -f "$FLASH_TX" ]; then
-  echo "  [flash 2/3] EchoMimic v3 Flash transformer (~1.5 GB)"
+FLASH_CFG="$ECHOMIMIC_DIR/flash/transformer/config.json"
+if [ ! -f "$FLASH_TX" ] || [ ! -f "$FLASH_CFG" ]; then
+  echo "  [flash 2/3] EchoMimic v3 Flash transformer (~3.73 GB) + config"
   "$HF" download BadToBest/EchoMimicV3 \
-    "echomimicv3-flash-pro/transformer/diffusion_pytorch_model.safetensors" \
+    --include "echomimicv3-flash-pro/*" \
     --local-dir "$ECHOMIMIC_DIR/flash/.hf_cache"
-  # The hf CLI preserves the in-repo path; flatten into flash/transformer/
-  mv "$ECHOMIMIC_DIR/flash/.hf_cache/echomimicv3-flash-pro/transformer/diffusion_pytorch_model.safetensors" \
-     "$FLASH_TX"
+  mv "$ECHOMIMIC_DIR/flash/.hf_cache/echomimicv3-flash-pro/diffusion_pytorch_model.safetensors" "$FLASH_TX"
+  mv "$ECHOMIMIC_DIR/flash/.hf_cache/echomimicv3-flash-pro/config.json" "$FLASH_CFG"
   rm -rf "$ECHOMIMIC_DIR/flash/.hf_cache"
 else
-  echo "  [flash 2/3] Flash transformer already downloaded (skip)"
+  echo "  [flash 2/3] Flash transformer + config already downloaded (skip)"
 fi
 
 # Link the shared Wan2.1-Fun base into flash/
@@ -136,16 +137,15 @@ else
 fi
 
 PREVIEW_TX="$ECHOMIMIC_DIR/preview/transformer/diffusion_pytorch_model.safetensors"
-if [ ! -f "$PREVIEW_TX" ]; then
-  echo "  [preview 2/3] EchoMimic v3 Preview transformer (~1.5 GB)"
+PREVIEW_CFG="$ECHOMIMIC_DIR/preview/transformer/config.json"
+if [ ! -f "$PREVIEW_TX" ] || [ ! -f "$PREVIEW_CFG" ]; then
+  echo "  [preview 2/3] EchoMimic v3 Preview transformer (~3.41 GB) + config"
   "$HF" download BadToBest/EchoMimicV3 \
-    "transformer/diffusion_pytorch_model.safetensors" \
-    --local-dir "$ECHOMIMIC_DIR/preview/.hf_cache"
-  mv "$ECHOMIMIC_DIR/preview/.hf_cache/transformer/diffusion_pytorch_model.safetensors" \
-     "$PREVIEW_TX"
-  rm -rf "$ECHOMIMIC_DIR/preview/.hf_cache"
+    --include "transformer/*" \
+    --local-dir "$ECHOMIMIC_DIR/preview"
+  # hf download with --include preserves the transformer/ subdir, which matches our target.
 else
-  echo "  [preview 2/3] Preview transformer already downloaded (skip)"
+  echo "  [preview 2/3] Preview transformer + config already downloaded (skip)"
 fi
 
 echo "  [preview 3/3] link Wan2.1-Fun base into preview/"
