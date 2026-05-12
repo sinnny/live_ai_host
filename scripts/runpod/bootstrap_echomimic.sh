@@ -74,6 +74,12 @@ uv pip install --python .venv/bin/python --reinstall \
   --index-url https://download.pytorch.org/whl/cu124 \
   torch torchvision torchaudio
 
+# requirements.txt doesn't pin numpy, so uv pulls 2.x. But transformers eagerly imports
+# tensorflow, which transitively imports ml_dtypes — compiled against numpy<2. Failure
+# mode: `AttributeError: _ARRAY_API not found` at infer_flash.py import time. Pin <2.
+echo "  pinning numpy<2 (transformers→tensorflow→ml_dtypes binary compat)..."
+uv pip install --python .venv/bin/python "numpy<2"
+
 # chinese-wav2vec2-base lives only on ModelScope per the repo README.
 uv pip install --python .venv/bin/python modelscope huggingface_hub
 
