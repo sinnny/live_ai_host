@@ -1,0 +1,56 @@
+# Stage 2 PuLID identity variant prompts.
+# Read by scripts/runpod/generate.py (built later). PuLID-Flux uses the reference
+# image (hero.png) for identity; this prompt drives pose/expression/composition.
+#
+# Total generations: 5 prompts × 5 seeds × 2 step counts = 50 images on first run.
+# generate.py should support `--limit N` for smoke runs (e.g. limit=1 → 1 image, smoke test).
+
+# Common prefix prepended to every prompt — describes WHO (Korean broadcast persona)
+# and PHOTOGRAPHIC STYLE (broadcast-quality, lighting, etc.). PuLID anchors identity;
+# this prefix anchors aesthetic.
+prompt_prefix: |
+  A Korean woman in her late 20s, photorealistic, broadcast-quality portrait,
+  soft natural studio lighting, clean light gray background, high detail, sharp focus
+
+prompts:
+  - id: 1
+    name: "3q_right"
+    text: "slight smile, looking at camera, 3/4 right angle, head turned slightly right"
+    purpose: "Head turning right; tests pose tolerance vs frontal hero"
+
+  - id: 2
+    name: "3q_left_surprise"
+    text: "slight surprise expression, looking at camera, slight 3/4 left angle"
+    purpose: "Head turning left, expression variation"
+
+  - id: 3
+    name: "speaking"
+    text: "speaking, mouth slightly open mid-word, looking at camera, broadcast presentation pose"
+    purpose: "Speaking-pose variant — REQUIRED INPUT for Stage 4 Test 3"
+
+  - id: 4
+    name: "looking_down"
+    text: "looking down at notes, thoughtful expression, slight smile"
+    purpose: "Idle 'reading' loop, eyes-not-on-camera test"
+
+  - id: 5
+    name: "warm_laugh"
+    text: "warm genuine laugh, eyes crinkled with joy, looking at camera"
+    purpose: "Engagement variant, full expression range"
+
+# Sampling config — pair of step counts to compare per the plan's
+# "test both N and M steps, pick the winner" methodology.
+# NOTE: Plan said "4 vs 8" but that was for Flux schnell; we use Flux DEV which needs
+# more steps. 20 vs 30 is the dev-equivalent comparison.
+step_counts: [20, 30]
+
+# Seeds — fixed list for reproducibility. Same seed × same prompt × same step count
+# should produce identical output (modulo non-determinism in MPS/CUDA kernels).
+seeds: [42, 1024, 7777, 31415, 9001]
+
+# Korean-specific failure modes to watch for during scoring (per plan §Stage 2):
+#  - Monolid / single-eyelid "corrected" to double-eyelid
+#  - Skin tone drifting toward pink/Western
+#  - Face structure morphing (jaw width, cheekbones)
+#  - Hair edge artifacts on profile shots
+#  - Epicanthic fold mishandled

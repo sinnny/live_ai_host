@@ -87,6 +87,16 @@ Stop with Ctrl+C. The dispatcher (`./dev`) routes to `scripts/comfyui.sh`, which
   uv pip install --python .venv/bin/python --no-deps facenet-pytorch
   ```
   `--no-deps` is required so it doesn't downgrade your torch. Restart ComfyUI after.
+- [ ] **Apply lldacing PR #95 patch** (forward-compat with ComfyUI v0.21+'s `timestep_zero_index` kwarg). Without this, every workflow run errors with `pulid_forward_orig() got an unexpected keyword argument 'timestep_zero_index'`. PR #95 is open upstream as of 2026-05; until merged, patch locally:
+  ```bash
+  # In tools/ComfyUI/custom_nodes/ComfyUI_PuLID_Flux_ll/PulidFluxHook.py,
+  # add `**kwargs,` to the pulid_forward_orig signature (just above `) -> Tensor:`):
+  #
+  #     attn_mask: Tensor = None,
+  #     **kwargs,  # swallow new ComfyUI kwargs — upstream PR #95
+  # ) -> Tensor:
+  ```
+  Restart ComfyUI after.
 - [ ] Restart ComfyUI; PuLID-Flux nodes appear in the right-click menu
 - [ ] **Start downloads via `./dev download-weights`** (~18 GB, kick off and let it run; resumable + idempotent)
   - **NOTE:** Plan said "Flux schnell" but PuLID-Flux requires **Flux dev** (PuLID was trained on dev's CFG; schnell is distilled CFG-free). Flux dev is non-commercial license (FLUX.1-dev license) — same Phase 1 caveat as InsightFace, document in DECISION.md.
@@ -163,7 +173,22 @@ Stop with Ctrl+C. The dispatcher (`./dev`) routes to `scripts/comfyui.sh`, which
 
 ---
 
-## Stage 2 — Identity Variants (Evening 2, ~3h active + overnight)
+## Stage 2 — Identity Variants (⚠ SKIPPED IN PHASE 0)
+*Plan: §Stage 2 — Identity Variants*
+
+**Why skipped:** Mac MPS in PyTorch 2.11 does not support `Float8_e4m3fn` dtype. Our downloaded `flux1-dev-fp8-e4m3fn.safetensors` cannot run on the M4 Pro at all (TypeError on the first sampling step). Switching to GGUF Q8_0 would test a model variant we'd never ship to production CUDA, defeating the test's purpose. **Decision:** defer PuLID viability test to Phase 1 on a rented GPU (~$2-4 for 1 hour H100). For Phase 0 Stage 4, use **natural variants** from the existing 7 reference photos instead of generated PuLID outputs (identity preservation is automatic since they're literally the same person).
+
+**What was built (preserved for Phase 1 GPU run):**
+- `comfy_workflows/pulid_flux.json` — patched workflow, ready to run on CUDA
+- `tools/ComfyUI/custom_nodes/ComfyUI_PuLID_Flux_ll/PulidFluxHook.py` — patched with PR #95 `**kwargs` fix
+- `tools/ComfyUI/models/{diffusion_models,text_encoders,vae,pulid}/` — all 5 weight files in place
+- Auto-downloaded by node on first run: EVA-CLIP, antelopev2, facexlib parsing
+
+**For Phase 0 → Stage 4 inputs:** crop kim_3 (3/4 angle, hand-on-chin) and kim_6 (mouth-open speaking pose) as `inputs/photos/variant_3q.png` and `inputs/photos/variant_speaking.png`. See "Stage 4 variant prep" task.
+
+---
+
+## Stage 2 — Identity Variants (Original plan, NOT executed in Phase 0)
 *Plan: §Stage 2 — Identity Variants*
 
 ### 2.1 Workflow setup
