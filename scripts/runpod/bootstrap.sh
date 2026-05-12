@@ -58,6 +58,16 @@ if [ ! -d ".venv" ]; then
 fi
 uv pip install --python .venv/bin/python -r requirements.txt
 
+# ComfyUI's requirements.txt has unpinned torch, which pulls the latest from PyPI default
+# index (currently cu130 wheels). RunPod's RTX A6000 driver supports CUDA 12.4, so we
+# force-reinstall torch with cu124 wheels to match. Without this, ComfyUI crashes at the
+# first sampling step with "Trying to convert Float8_e4m3fn to the MPS backend" or
+# "NVIDIA driver too old" — see 2026-05-12 pod session notes.
+echo "  forcing torch cu124 wheels (override PyPI default cu130 for driver compat)..."
+uv pip install --python .venv/bin/python --reinstall \
+  --index-url https://download.pytorch.org/whl/cu124 \
+  torch torchvision torchaudio
+
 # ----- 5. Clone + patch PuLID-Flux node -----
 echo ""
 echo "==> [5/9] Clone + patch PuLID-Flux node"

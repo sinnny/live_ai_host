@@ -1,5 +1,5 @@
 {
-  "_comment": "API-format ComfyUI workflow for PuLID-Flux. Patched for RunPod CUDA setup. generate.py parameterizes the nodes in _template_targets per iteration.",
+  "_comment": "API-format ComfyUI workflow for PuLID-Flux v2 (tuned). All widget values force-corrected; PuLID weight lowered to 0.7 with start_at=0.1, end_at=0.7 so prompts can drive pose variation. FluxGuidance bumped to 3.5 for stronger prompt adherence. generate.py modifies the nodes in _template_targets per iteration.",
   "_template_targets": {
     "positive_prompt_node_id": "107",
     "seed_node_id": "111",
@@ -11,7 +11,8 @@
       "inputs": {
         "clip_name1": "t5xxl_fp8_e4m3fn.safetensors",
         "clip_name2": "clip_l.safetensors",
-        "type": "flux"
+        "type": "flux",
+        "device": "default"
       }
     },
     "108": {
@@ -60,13 +61,13 @@
     "111": {
       "class_type": "RandomNoise",
       "inputs": {
-        "noise_seed": 385539500762983
+        "noise_seed": 42
       }
     },
     "112": {
       "class_type": "FluxGuidance",
       "inputs": {
-        "guidance": 2.5,
+        "guidance": 3.5,
         "conditioning": [
           "107",
           0
@@ -79,14 +80,16 @@
     },
     "109": {
       "class_type": "KSamplerSelect",
-      "inputs": {}
+      "inputs": {
+        "sampler_name": "euler"
+      }
     },
     "178": {
       "class_type": "ApplyPulidFlux",
       "inputs": {
-        "weight": 1,
-        "start_at": 0,
-        "end_at": 1,
+        "weight": 0.7,
+        "start_at": 0.1,
+        "end_at": 0.7,
         "model": [
           "122",
           0
@@ -129,12 +132,13 @@
     "110": {
       "class_type": "BasicScheduler",
       "inputs": {
-        "steps": "simple",
-        "denoise": 28,
+        "steps": 28,
+        "denoise": 1.0,
         "model": [
           "178",
           0
-        ]
+        ],
+        "scheduler": "simple"
       }
     },
     "116": {
