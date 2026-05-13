@@ -33,6 +33,7 @@ TESTS = {
     "hero": "hero.png",
     "variant_3q": "variant_3q.png",
     "variant_speaking": "variant_speaking.png",
+    "test_2": "test_2.png",
 }
 AUDIO_SRC = PROJECT_ROOT / "inputs/audio/reference_korean_30s.wav"
 OUT_ROOT = PROJECT_ROOT / "outputs/stage4_videos"
@@ -60,6 +61,28 @@ def ensure_audio_16k(src: Path) -> Path:
     return cache
 
 
+def ensure_audio_enhanced(src: Path) -> Path:
+    """16 kHz mono + 500ms leading silence anchor + EBU R128 loudness normalize (-16 LUFS,
+    true-peak -3 dBFS). The leading silence gives wav2vec2 a "neutral mouth" prior so the
+    first few output frames aren't garbage; loudnorm raises quiet TTS audio so the model
+    actually opens the mouth. Cached separately from the raw 16k version."""
+    cache_dir = OUT_ROOT / "_audio_16k"
+    cache_dir.mkdir(parents=True, exist_ok=True)
+    cache = cache_dir / (src.stem + ".16k.enh.wav")
+    if cache.exists() and cache.stat().st_mtime > src.stat().st_mtime:
+        return cache
+    print(f"[audio] enhanced preprocess (500ms silence + loudnorm) {src} → {cache}")
+    subprocess.run(
+        ["ffmpeg", "-y", "-loglevel", "error",
+         "-i", str(src),
+         "-ac", "1", "-ar", "16000",
+         "-af", "adelay=500,loudnorm=I=-16:TP=-3:LRA=11",
+         str(cache)],
+        check=True,
+    )
+    return cache
+
+
 def default_video_length(resolution: int) -> int:
     # Repo docs: 113 fits 24 GB at 768. 1024 ≈ 1.78× tokens → drop margin even on A6000 48 GB.
     return 65 if resolution == 1024 else 81
@@ -67,7 +90,8 @@ def default_video_length(resolution: int) -> int:
 
 def run_flash(test_name: str, image_path: Path, audio_path: Path,
               resolution: int, video_length: int, seed: int,
-              prompt: str, negative_prompt: str) -> dict:
+              prompt: str, negative_prompt: str,
+              guidance_scale: float, audio_guidance_scale: float) -> dict:
     save_dir = OUT_ROOT / f"flash_{resolution}" / test_name
     save_dir.mkdir(parents=True, exist_ok=True)
 
@@ -84,8 +108,8 @@ def run_flash(test_name: str, image_path: Path, audio_path: Path,
         "--ckpt_idx", "50000",
         "--sampler_name", "Flow_Unipc",
         "--video_length", str(video_length),
-        "--guidance_scale", "6.0",
-        "--audio_guidance_scale", "3.0",
+        "--guidance_scale", str(guidance_scale),
+        "--audio_guidance_scale", str(audio_guidance_scale),
         "--audio_scale", "1.0",
         "--neg_scale", "1.0",
         "--neg_steps", "0",
@@ -125,6 +149,8 @@ def run_flash(test_name: str, image_path: Path, audio_path: Path,
         "exit_code": proc.returncode,
         "prompt": prompt,
         "negative_prompt": negative_prompt,
+        "guidance_scale": guidance_scale,
+        "audio_guidance_scale": audio_guidance_scale,
     }
 
 
@@ -140,6 +166,12 @@ def main():
     p.add_argument("--prompt", default=DEFAULT_PROMPT)
     p.add_argument("--negative-prompt", default="",
                    help="passed to infer_flash.py --negative_prompt; default empty (run_flash.sh default)")
+    p.add_argument("--guidance-scale", type=float, default=6.0,
+                   help="text CFG; run_flash.sh default 6.0. Lower (4.5-5.0) loosens prompt adherence.")
+    p.add_argument("--audio-guidance-scale", type=float, default=3.0,
+                   help="audio CFG — the lip-sync dial. Default 3.0. Higher (3.5-4.0) = tighter sync, more jitter.")
+    p.add_argument("--audio-preprocessing", choices=["standard", "enhanced"], default="standard",
+                   help="standard = resample 16kHz only; enhanced = +500ms leading silence anchor + EBU R128 loudnorm.")
     args = p.parse_args()
 
     if args.variant == "preview":
@@ -160,7 +192,10 @@ def main():
 
     if not AUDIO_SRC.exists():
         sys.exit(f"Audio not found: {AUDIO_SRC}")
-    audio_16k = ensure_audio_16k(AUDIO_SRC)
+    if args.audio_preprocessing == "enhanced":
+        audio_path = ensure_audio_enhanced(AUDIO_SRC)
+    else:
+        audio_path = ensure_audio_16k(AUDIO_SRC)
 
     print(f"\n=== EchoMimic v3 Flash · {args.resolution}x{args.resolution} · "
           f"vlen={args.video_length} · tests={tests} ===\n")
@@ -176,12 +211,14 @@ def main():
             meta = run_flash(
                 test_name=t,
                 image_path=image_path,
-                audio_path=audio_16k,
+                audio_path=audio_path,
                 resolution=args.resolution,
                 video_length=args.video_length,
                 seed=args.seed,
                 prompt=args.prompt,
                 negative_prompt=args.negative_prompt,
+                guidance_scale=args.guidance_scale,
+                audio_guidance_scale=args.audio_guidance_scale,
             )
         except Exception as e:
             meta = {"test_name": t, "error": repr(e)}
