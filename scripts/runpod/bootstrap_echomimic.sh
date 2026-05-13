@@ -107,12 +107,21 @@ echo ""
 echo "==> [6/8] EchoMimic v3 Flash weights"
 mkdir -p "$ECHOMIMIC_DIR/flash/transformer"
 
-# chinese-wav2vec2-base — ModelScope only
+# chinese-wav2vec2-base — try HF first (faster, ~5 min for 380 MB pytorch_model.bin),
+# fall back to ModelScope if HF fails. The fairseq .pt checkpoint (~1.14 GB) on HF is the
+# original Fairseq format and isn't used by Wav2Vec2Model.from_pretrained() — excluded.
 if [ ! -f "$ECHOMIMIC_DIR/flash/chinese-wav2vec2-base/.done" ]; then
-  echo "  [flash 1/3] chinese-wav2vec2-base (ModelScope, ~360 MB)"
-  "$ECHOMIMIC_DIR/.venv/bin/modelscope" download \
-    --model "TencentGameMate/chinese-wav2vec2-base" \
-    --local_dir "$ECHOMIMIC_DIR/flash/chinese-wav2vec2-base"
+  echo "  [flash 1/3] chinese-wav2vec2-base"
+  if "$HF" download TencentGameMate/chinese-wav2vec2-base \
+       --exclude "*.pt" "*.gitattributes" "README.md" \
+       --local-dir "$ECHOMIMIC_DIR/flash/chinese-wav2vec2-base"; then
+    echo "    ↳ downloaded from HuggingFace (fast path)"
+  else
+    echo "    ↳ HF download failed, falling back to ModelScope..."
+    "$ECHOMIMIC_DIR/.venv/bin/modelscope" download \
+      --model "TencentGameMate/chinese-wav2vec2-base" \
+      --local_dir "$ECHOMIMIC_DIR/flash/chinese-wav2vec2-base"
+  fi
   touch "$ECHOMIMIC_DIR/flash/chinese-wav2vec2-base/.done"
 else
   echo "  [flash 1/3] chinese-wav2vec2-base already downloaded (skip)"
