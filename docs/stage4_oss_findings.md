@@ -1,12 +1,12 @@
 # Stage 4 — EchoMimic v3 OSS Talking-Head Test Findings
 
-**Date:** 2026-05-12
-**Hardware:** Rented RTX A6000 48GB (Community Cloud, $0.49/hr) — 1 pod session
-**Reference image:** `inputs/photos/hero.png` (1024×1024, Korean female broadcast headshot)
+**Date:** 2026-05-12 (initial round) · 2026-05-13 (follow-up confirmation round)
+**Hardware:** Rented RTX A6000 48GB (Community Cloud, $0.49/hr) — 2 pod sessions
+**Reference images:** `inputs/photos/hero.png` (1024×1024, Korean female 3/4-ish broadcast headshot, derived from kim_5) + `inputs/photos/test_2.png` (768×768, Korean female direct-front studio headshot with teeth-visible smile, added 2026-05-13 for follow-up verification)
 **Driving audio:** `inputs/audio/reference_korean_30s.wav` (24kHz mono, ~15.15s Korean TTS — flagged confound from Stage 3)
 **Model stack:** EchoMimic v3 Flash (Apache 2.0) — Wan2.1-Fun-V1.1-1.3B-InP base + chinese-wav2vec2-base audio encoder + echomimicv3-flash-pro transformer (3.73 GB)
-**Tests run:** Hero shot only (Test 1). Tests 2-3 (pose variants) and Preview A/B intentionally not run — see "Why we stopped at Hero" below.
-**Total spend:** ~$0.60 across one ~70-minute pod session
+**Tests run:** Hero shot at two configurations (1024+plan-prompt, 768+tuned-advanced-prompt) plus a follow-up `test_2` shot with five additional tuning levers stacked (see Follow-up Confirmation section). Tests 2-3 from original plan matrix (variant_3q, variant_speaking) and Preview A/B intentionally not run.
+**Total spend:** ~$0.80 across two pod sessions (~$0.60 initial + ~$0.20 follow-up)
 
 ## Question being tested
 
@@ -62,14 +62,52 @@ These remain to be evaluated in Phase 0 Stage 4 Tests 4-6 (deferred for cost-man
 
 None of these are 5-evening Phase 2 work. Phase 1 should plan to ship on paid models without assuming OSS migration in 6-month timeframe.
 
-## Why we stopped at Hero
+## Why we stopped at Hero (initial round) — then ran a follow-up
 
-The decision to skip Tests 2-3 (pose variants) and Preview A/B (English wav2vec2) was a deliberate cost-vs-evidence tradeoff:
+The decision to skip Tests 2-3 (pose variants) and Preview A/B (English wav2vec2) was a deliberate cost-vs-evidence tradeoff after the initial 1024 + 768 hero runs:
 
 - **Tests 2-3** would tell us how Flash handles different *input* poses, but the gating failure is in *audio→lip mapping* — which doesn't change with pose input. We would observe the same lip-sync mismatch with better or worse identity preservation across poses. Cost: ~$0.14. Information gain: marginal.
 - **Preview variant** uses English wav2vec2-base-960h, which is *further* from Korean phonemes than chinese-wav2vec2 (Chinese and Korean share more East Asian phoneme structure than either does with English). Expected outcome: worse lip-sync, not better. Cost: ~$0.10. Information gain: defensive only.
 
-The hero result is sufficient signal for DECISION.md. Re-spinning a pod for Tests 2-3 if Phase 1 demands them is cheaper than running them now defensively.
+However, after the initial findings the user (correctly) wanted to verify the gating diagnosis wasn't an artifact of the specific reference photo (which had a slight 3/4 angle and may have biased the model's mouth output). They added `test_2.png` — a clean front-facing studio headshot with teeth visible in a natural smile — and asked for a follow-up round with several optimization levers stacked.
+
+## Follow-up confirmation round (2026-05-13)
+
+**Five tuning levers stacked simultaneously**, mirroring expert-forum optimization recipes for EchoMimic v3:
+
+| Lever | Initial best (hero @768) | Follow-up (test_2 @768) |
+|---|---|---|
+| Reference image | `hero.png` (3/4-ish angle) | **`test_2.png` (clean direct front)** |
+| Audio preprocessing | resample 16 kHz only | **+500 ms leading silence anchor + EBU R128 loudnorm (-16 LUFS, true-peak -3 dBFS)** |
+| Text CFG (`guidance_scale`) | 6.0 (run_flash.sh default) | **5.0** (loosens prompt grip) |
+| Audio CFG (`audio_guidance_scale`) — *the lip-sync dial* | 3.0 (run_flash.sh default) | **3.5** (tightens lip-sync, intentionally trading jitter risk for sync precision) |
+| Negative prompt | Failure-mode-targeted (texture/quality) | **+ explicit drift terms: "head rotating, head turning, jaw misaligned, twitching, blurry mouth, exaggerated motion, lips out of sync, mouth twitching, jaw clenching"** |
+
+Other settings held constant (768×768 resolution, video_length=81, seed=43, 8 inference steps, same advanced positive prompt).
+
+Wall time: 632 seconds. Cost: ~$0.08.
+
+**User verdict on `test_2_output.mp4`:** "the lip sync is still off." Same gating failure mode as both prior hero runs.
+
+### What this follow-up round proves
+
+This isn't a "we tried one more thing and it didn't work" datapoint. The five levers we stacked are independent and target different parts of the pipeline:
+
+| Lever | What it would have improved IF it were the bottleneck |
+|---|---|
+| Different reference image | Pose/expression bias from input photo |
+| Leading silence anchor | First-frame mouth garbage, neutral-prior alignment |
+| Audio loudnorm | Quiet TTS → tiny mouth movements |
+| Audio CFG bump (3.0 → 3.5) | Loose audio adherence; would tighten lip-to-phoneme mapping |
+| Drift-targeted negatives | Jaw misalignment, mouth twitching, lips-out-of-sync artifacts |
+
+If the failure were prompt-tunable, audio-quality-fixable, CFG-tunable, or input-pose-dependent, *at least one* of these would have produced a noticeable improvement. None did. The lip-sync mismatch survived all five independent interventions — which is consistent with the failure being **structural** (the audio encoder lacks Korean phoneme representations) rather than **parametric** (a setting we haven't found yet).
+
+A single failed test could plausibly be tuning bad luck. Five orthogonal failed interventions is the model telling us it doesn't have the data we need.
+
+### Strengthened conclusion
+
+The original finding is upgraded from *"based on hero, OSS appears not viable for Korean"* to **"verified across two reference photos and five orthogonal optimization levers — OSS audio-driven Korean lip-sync is not viable with publicly released models as of 2026-05."** Phase 1 Korean shipping must use paid multilingual models. Phase 2 OSS migration requires Korean-specific training, not parameter tuning.
 
 ## Pragmatic Phase 0 workaround
 
@@ -86,8 +124,14 @@ For Phase 0 Stage 4 Tests 4-6 (the paid commodity/premium evaluations), we will 
 7. **`uv venv` doesn't install pip into the venv.** Use `~/.local/bin/uv pip install --python <venv>/bin/python ...` for in-venv installs, not `<venv>/bin/pip`.
 8. **GitHub SSH from a fresh RunPod pod needs explicit auth.** Mac→pod SSH auth is unrelated to pod→GitHub auth. Either use `ssh -A` to forward your Mac's agent (subject to RunPod's AgentForwarding config), or use a fine-grained Personal Access Token via HTTPS for one-shot clones.
 9. **`--video_length` in `infer_flash.py` is total output length in frames, not a sliding-window chunk size.** Don't be misled by Preview's `partial_video_length` field name into expecting Flash to auto-window long audio. Setting `--video_length N` produces exactly N frames at the specified `--fps`; audio is truncated to match.
+10. **`infer_flash.py` output filename matches the input test name** (`<test_name>_output.mp4`), not a hardcoded `hero_output.mp4`. Initial scp instructions assumed the latter; corrected after session 2.
+11. **`TencentGameMate/chinese-wav2vec2-base` IS on HuggingFace** despite the EchoMimic v3 README pointing only to ModelScope. HF has the same `pytorch_model.bin` (380 MB) + `config.json` + `preprocessor_config.json`. HF transfer is 10-20× faster than ModelScope (~5 min vs ~25 min). Use `hf download --exclude "*.pt"` to skip the 1.14 GB fairseq checkpoint (not needed by `Wav2Vec2Model.from_pretrained()`). Keep ModelScope as fallback for robustness.
+12. **EchoMimic v3 audio CFG (`audio_guidance_scale`) is the lip-sync dial.** Run_flash.sh default is 3.0. Bumping to 3.5 tightens audio adherence at the cost of jitter risk. **For Korean audio, no value in [3.0, 4.0] meaningfully improved phoneme tracking** — the encoder's training-data gap is the real limit, not adherence strength.
+13. **Audio preprocessing (500ms leading silence + EBU R128 loudnorm) helps with neutral-mouth anchoring** but does not change the audio encoder's phoneme representation. Useful as standard audio-driven-video hygiene; not a workaround for missing training data.
 
 ## Cost summary
+
+### Session 1 — 2026-05-12
 
 | Item | Time | Cost |
 |---|---|---|
@@ -97,16 +141,34 @@ For Phase 0 Stage 4 Tests 4-6 (the paid commodity/premium evaluations), we will 
 | Hero @1024 inference (Config A) | 865s wall = ~14.4 min | ~$0.12 |
 | Hero @768 advanced prompt (Config B) | 515s wall = ~8.6 min | ~$0.07 |
 | Debugging time on numpy/ffmpeg/pyloudnorm | ~10 min idle | ~$0.08 |
-| **Total Stage 4 OSS spend** | **~70 min** | **~$0.60** |
+| **Session 1 subtotal** | **~70 min** | **~$0.60** |
 
-Combined with Stage 2 PuLID spend (~$0.90), total RunPod spend across all Phase 0 OSS testing: **~$1.50**. Well under the $44 prepurchased credit; ~$42.50 remains for any future Phase 0 / Phase 1 work that needs CUDA.
+### Session 2 — 2026-05-13 (follow-up confirmation)
+
+| Item | Time | Cost |
+|---|---|---|
+| Pod 2: A6000 48GB, 50GB container disk | ~25 min | ~$0.20 |
+| Bootstrap (faster — HF-first chinese-wav2vec2 path, ~5 min vs 25 min) | ~10 min | (included) |
+| test_2 inference (Config C — front shot + enhanced audio + CFG 5.0/3.5 + drift negatives) | 632s wall = ~10.5 min | ~$0.09 |
+| **Session 2 subtotal** | **~25 min** | **~$0.20** |
+
+### Combined
+
+| | Time | Cost |
+|---|---|---|
+| **Total Stage 4 OSS spend** | **~95 min across 2 sessions** | **~$0.80** |
+
+Combined with Stage 2 PuLID spend (~$0.90), total RunPod spend across all Phase 0 OSS testing: **~$1.70**. Well under the $44 prepurchased credit; ~$42 remains for any future Phase 0 / Phase 1 work that needs CUDA.
 
 ## Outputs preserved
 
-- `outputs/stage4_videos/flash_1024/hero/hero_output.mp4` — Config A baseline (1024, plan prompt)
+- `outputs/stage4_videos/flash_1024/hero/hero_output.mp4` — Session 1 Config A (1024, plan prompt)
 - `outputs/stage4_videos/flash_1024/hero/_meta.json` — Config A metadata sidecar
-- `outputs/stage4_videos/flash_768/hero/hero_output.mp4` — Config B tuned (768, advanced prompt)
+- `outputs/stage4_videos/flash_768/hero/hero_output.mp4` — Session 1 Config B (768, advanced prompt)
 - `outputs/stage4_videos/flash_768/hero/_meta.json` — Config B metadata sidecar
-- `outputs/stage4_videos/_audio_16k/reference_korean_30s.16k.wav` — resampled driving audio (audit trail)
+- `outputs/stage4_videos/flash_768/test_2/test_2_output.mp4` — Session 2 Config C (test_2 front shot + enhanced audio + CFG 5.0/3.5 + drift negatives)
+- `outputs/stage4_videos/flash_768/test_2/_meta.json` — Config C metadata sidecar
+- `outputs/stage4_videos/_audio_16k/reference_korean_30s.16k.wav` — resampled driving audio (raw)
+- `outputs/stage4_videos/_audio_16k/reference_korean_30s.16k.enh.wav` — enhanced driving audio (+500ms silence + loudnorm) used for Session 2
 
-Both outputs are short clips (2.6s / 3.24s), but contain enough phoneme variety from the Korean TTS opening to evaluate the lip-sync failure clearly.
+All outputs are short clips (2.6s / 3.24s × 3) but contain enough phoneme variety from the Korean TTS opening to evaluate the lip-sync failure clearly.
