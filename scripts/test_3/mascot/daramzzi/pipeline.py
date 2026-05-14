@@ -175,11 +175,18 @@ _ALL_STAGES = [
     help="Stage to start from (later stages always run).",
 )
 @click.option("--force/--no-force", default=False)
-def run_all(config_path: str, start: str, force: bool) -> None:
+@click.option(
+    "--skip-approval/--no-skip-approval",
+    default=False,
+    help="Bypass the founder-approval halt after Stage 5.2 (seed). Use only if "
+    "you've already reviewed the seed and want a single uninterrupted run.",
+)
+def run_all(config_path: str, start: str, force: bool, skip_approval: bool) -> None:
     """Run every stage in order starting at --start.
 
-    Note: Stage 5.2 (seed) is a founder-approval gate. Re-run after manual
-    review with `--start=lora-dataset` to continue.
+    Halts after Stage 5.2 (seed) for founder approval per FSD §5.2, unless
+    --skip-approval is set OR --start is past 'seed' (i.e. you're already
+    resuming post-approval with --start=lora-dataset).
     """
     cfg = _load(config_path)
 
@@ -198,6 +205,26 @@ def run_all(config_path: str, start: str, force: bool) -> None:
     for display_name, key in _ALL_STAGES[started_idx:]:
         click.echo(f"\n=== {display_name} ===", err=True)
         _run_stage(display_name, stage_fns[key])
+
+        if key == "seed" and not skip_approval:
+            seed_path = cfg.stage_dir("02_seed") / "seed.png"
+            click.echo("\n" + "=" * 64, err=True)
+            click.echo("  FOUNDER APPROVAL GATE — Stage 5.2 (seed)", err=True)
+            click.echo("=" * 64, err=True)
+            click.echo(f"\n  Seed image: {seed_path}\n", err=True)
+            click.echo("  Review against FSD §3.2 + bible §3.2 + §4:", err=True)
+            click.echo("    - Clearly reads as a squirrel (not hamster)", err=True)
+            click.echo("    - Chubby chibi proportions (head ~1.3x body)", err=True)
+            click.echo("    - Chestnut + cream color palette", err=True)
+            click.echo("    - Apron + headset visible", err=True)
+            click.echo("    - Earnest expression (not sassy / sarcastic)", err=True)
+            click.echo("\n  PASS → resume:", err=True)
+            click.echo(f"    python pipeline.py run-all --config {config_path} --start lora-dataset", err=True)
+            click.echo("\n  FAIL → try another seed:", err=True)
+            click.echo("    python pipeline.py seed --new-seed <int>", err=True)
+            click.echo("\n  (Pass --skip-approval to bypass this gate in future run-all calls.)", err=True)
+            click.echo("=" * 64 + "\n", err=True)
+            return
 
 
 @cli.command()
