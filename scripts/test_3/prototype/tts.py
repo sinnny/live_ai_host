@@ -21,10 +21,16 @@ from lib.schema import load_script
 
 SAMPLE_RATE = 24000
 DEFAULT_REF_TEXT = (
-    "안녕하세요! 쇼호스트 다람찌예요! "
-    "헤헤, 다람찌랑 오늘도 같이 놀아주세요! "
-    "잘 부탁드립니다!"
+    "안녕하세요! 람찌람찌, 다람찌예요! "
+    "다람찌가 오늘 가져온 제품은… 두둥! 호두과자예요!"
 )
+# Natural-language instruction passed to inference_instruct2. CosyVoice 2 was
+# trained primarily on Chinese instructions, so this is in Chinese. Translates
+# roughly to "speak with a lively, cute, high-pitched young girl's voice."
+# Override via --instruct on the CLI.
+DEFAULT_INSTRUCT = "用一个活泼、可爱、年轻的高音女孩声音说"
+# librosa.effects.trim threshold (dB below peak); higher = more aggressive.
+SILENCE_TRIM_DB = 30
 
 
 def _file_sha(path: Path) -> str:
@@ -110,17 +116,29 @@ ZERO_SHOT_PROMPT = Path("/opt/cosyvoice/asset/zero_shot_prompt.wav")
 @click.option("--output", "out", required=True, type=click.Path(dir_okay=False))
 @click.option("--text", default=DEFAULT_REF_TEXT, show_default=False,
               help="Korean text the reference voice will read (~10s).")
-@click.option("--reference-wav", default=str(CROSS_LINGUAL_PROMPT), show_default=True,
+@click.option("--reference-wav", default=str(ZERO_SHOT_PROMPT), show_default=True,
               type=click.Path(),
-              help="Reference voice WAV (bundled with CosyVoice 2). Used as the voice "
-                   "timbre for cross-lingual Korean generation.")
-def voice_ref(out: str, text: str, reference_wav: str) -> None:
-    """One-time bootstrap: render `text` as Korean speech using CosyVoice 2's
-    cross-lingual path with a bundled reference WAV as the voice timbre source.
+              help="Reference voice WAV (bundled with CosyVoice 2). instruct2 mode "
+                   "pairs with zero_shot_prompt.wav per the README.")
+@click.option("--instruct", default=DEFAULT_INSTRUCT, show_default=False,
+              help="Natural-language instruction for the voice style "
+                   "(Chinese works best — CosyVoice 2 was trained on CN instructions).")
+@click.option("--mode", type=click.Choice(["instruct2", "cross_lingual"]),
+              default="instruct2", show_default=True,
+              help="instruct2 = natural-language voice control (better tone match); "
+                   "cross_lingual = pure timbre-copy from --reference-wav.")
+@click.option("--trim-silence/--no-trim-silence", default=True, show_default=True,
+              help="Strip trailing silence from CosyVoice's output.")
+def voice_ref(out: str, text: str, reference_wav: str, instruct: str,
+              mode: str, trim_silence: bool) -> None:
+    """One-time bootstrap: render `text` as Korean speech via CosyVoice 2.
 
-    CosyVoice 2-0.5B has zero SFT speakers — it's purely zero-shot/cross-lingual.
-    `inference_cross_lingual` takes a reference WAV (any language) and generates
-    the requested text (in our case Korean) using that voice's timbre.
+    Two synthesis modes:
+      - instruct2 (default): natural-language voice control. The --instruct
+        text tells the model HOW to speak (e.g. high-pitched, cute, lively).
+        Better fit when we want a specific voice character.
+      - cross_lingual: pure timbre-copy from --reference-wav, no style
+        instruction. Earlier default; sounded androgynous for our use.
     """
     out_path = Path(out)
     out_path.parent.mkdir(parents=True, exist_ok=True)
@@ -132,15 +150,24 @@ def voice_ref(out: str, text: str, reference_wav: str) -> None:
             f"{CROSS_LINGUAL_PROMPT} and {ZERO_SHOT_PROMPT}."
         )
 
-    # Load reference at 16 kHz (what CosyVoice 2's frontend expects).
     from cosyvoice.utils.file_utils import load_wav
     prompt_speech_16k = load_wav(str(ref_path), 16000)
 
     model = _load_cosyvoice()
     samples = []
-    for chunk in model.inference_cross_lingual(text, prompt_speech_16k, stream=False):
-        samples.append(chunk["tts_speech"].cpu().numpy().flatten())
+    if mode == "instruct2":
+        for chunk in model.inference_instruct2(text, instruct, prompt_speech_16k, stream=False):
+            samples.append(chunk["tts_speech"].cpu().numpy().flatten())
+    else:
+        for chunk in model.inference_cross_lingual(text, prompt_speech_16k, stream=False):
+            samples.append(chunk["tts_speech"].cpu().numpy().flatten())
     audio = np.concatenate(samples) if samples else np.zeros(0, dtype=np.float32)
+
+    # Trim trailing (and leading) silence — CosyVoice 2 routinely emits
+    # several seconds of dead air at the end of synthesis.
+    if trim_silence and audio.size:
+        import librosa
+        audio, _ = librosa.effects.trim(audio, top_db=SILENCE_TRIM_DB)
 
     # Normalize peak to -3 dBFS
     peak = np.max(np.abs(audio)) if audio.size else 1.0
@@ -155,7 +182,9 @@ def voice_ref(out: str, text: str, reference_wav: str) -> None:
         "duration_sec": len(audio) / SAMPLE_RATE,
         "transcript": str(sidecar),
         "reference_wav": str(ref_path),
-        "inference_mode": "cross_lingual",
+        "inference_mode": mode,
+        "instruct": instruct if mode == "instruct2" else None,
+        "silence_trimmed": trim_silence,
     }, ensure_ascii=False, indent=2))
 
 
