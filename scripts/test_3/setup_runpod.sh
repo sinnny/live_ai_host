@@ -59,11 +59,19 @@ apt-get install -y -qq --no-install-recommends \
 
 python -m pip install --upgrade -q pip wheel setuptools
 
-# Image-gen / training stack (PyTorch is already on the template; we don't reinstall it)
+# Image-gen / training stack.
+# IMPORTANT: We force-upgrade torch first. RunPod's PyTorch template can ship
+# with a torch old enough that its `infer_schema` doesn't resolve string-form
+# type annotations, which breaks recent diffusers at import (see
+# diffusers/models/attention_dispatch.py registering @_custom_op decorators).
+echo "[setup_runpod] force-upgrading torch to match CUDA 12.4 build..."
+pip install --upgrade -q --index-url https://download.pytorch.org/whl/cu124 \
+    torch torchvision torchaudio
+
 echo "[setup_runpod] pip install image-gen + training stack..."
-pip install -q \
-    "diffusers>=0.30,<0.32" \
-    "transformers>=4.45,<4.50" \
+pip install --upgrade -q \
+    diffusers \
+    transformers \
     "accelerate>=0.34" \
     "peft>=0.13" \
     "safetensors>=0.4" \

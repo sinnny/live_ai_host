@@ -46,6 +46,7 @@ def get_pipeline(
     pipe = DiffusionPipeline.from_pretrained(
         base_model,
         torch_dtype=dtype,
+        trust_remote_code=True,
     )
     pipe.scheduler = DPMSolverMultistepScheduler.from_config(pipe.scheduler.config)
     pipe = pipe.to(device)
