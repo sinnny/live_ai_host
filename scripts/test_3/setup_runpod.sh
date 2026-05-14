@@ -82,10 +82,17 @@ pip install --upgrade -q \
     "huggingface_hub>=0.25" \
     sentencepiece protobuf \
     "Pillow>=10.4" "numpy<2" \
-    opencv-python-headless mediapipe \
+    opencv-python-headless \
+    "mediapipe==0.10.14" \
     "click>=8.1" pyyaml einops scipy tqdm \
     timm kornia \
     jsonschema librosa soundfile
+
+# Pin mediapipe to 0.10.14 explicitly — AI-Toolkit's advanced_generator extension
+# pulls in controlnet_aux, which uses the old `mediapipe.solutions` namespace
+# that was restructured/removed in newer mediapipe releases. AI-Toolkit imports
+# every extension eagerly at boot, so a missing namespace kills training even
+# though we never invoke the affected extension.
 
 # AI-Toolkit (Ostris) — LoRA trainer.
 # Not pip-installable (no setup.py/pyproject.toml); we invoke run.py directly
