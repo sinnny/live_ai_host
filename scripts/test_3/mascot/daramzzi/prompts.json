@@ -6,8 +6,8 @@
   "generated_by": "static (hand-written from bible, no LLM API call at pipeline runtime)",
 
   "base": {
-    "prompt": "A chubby chibi cartoon character of a Korean ground squirrel (chipmunk) intern named Daramzzi. Round pear-shaped body, head approximately 1.3 times wider than body, warm chestnut brown fur with cream belly and chin, two simplified thin dark dorsal stripes on her back. Wearing a half-apron in rust-orange color with one large front pocket and a small rectangular name tag reading 'Daramzzi'. A comically oversized headset microphone is on her head, the mic cup nearly the size of her ear. Stylized 2D illustration with soft cel-shading, clean line art, warm autumn color palette. Earnest and lovable expression. Single character centered, clean pure white background, full character framing.",
-    "negative_prompt": "hamster, photorealistic, realistic fur texture, dark, scary, gritty, edgy, sexy, sexualized, suggestive, sassy, sarcastic, smug, mean, evil, multiple characters, group of characters, text overlay, watermark, signature, low quality, blurry, distorted anatomy, extra limbs, mutated, cropped body, partial body"
+    "prompt": "A chubby chibi character of a Korean ground squirrel (chipmunk) intern named Daramzzi, rendered in the soft polished 3D cute mascot art style of Korean characters like Kim Hamzzi. Round pear-shaped body, head approximately 1.3 times wider than body, warm chestnut brown soft volumetric fluffy fur with cream belly and chin, two simplified thin dark dorsal stripes on her back. Big expressive shiny black eyes with glossy highlights, small pink nose, small rounded ears with soft pink inner-ear. Wearing a half-apron in rust-orange color with one large front pocket and a small rectangular name tag reading 'Daramzzi'. A comically oversized headset microphone is on her head, the mic cup nearly the size of her ear. Polished 3D character rendering, soft volumetric fur shading, warm soft studio lighting with subtle rim light, gentle shallow depth of field, kawaii cute mascot aesthetic, commercial mascot illustration quality, premium animation studio look. Earnest and lovable expression. Single character centered, clean soft white studio background, full character framing.",
+    "negative_prompt": "hamster, photograph of a real living animal, wildlife photography, dark, scary, gritty, edgy, sexy, sexualized, suggestive, sassy, sarcastic, smug, mean, evil, multiple characters, group of characters, text overlay, watermark, signature, low quality, blurry, distorted anatomy, extra limbs, mutated, cropped body, partial body, flat illustration, flat 2D illustration, line art, cel-shading, anime line drawing, vector art, sticker, harsh outline"
   },
 
   "qwen_image_settings": {
@@ -68,7 +68,7 @@
 
     "mouth": {
       "count": 6,
-      "framing_instruction": "ISOLATED close-up of ONLY the mouth area of a chubby cartoon squirrel character, cropped tight to show just the mouth shape and immediate surrounding fur, no other body parts visible, on plain pure white background for clean alpha-matte extraction. Same art style as the full character: stylized 2D, soft cel-shading, chestnut brown fur, cream around mouth.",
+      "framing_instruction": "ISOLATED close-up of ONLY the mouth area of a chubby chibi 3D cute mascot squirrel character, cropped tight to show just the mouth shape and immediate surrounding fur, no other body parts visible, on plain pure white background for clean alpha-matte extraction. Same art style as the full character: polished 3D rendered cute mascot, soft volumetric fluffy fur shading, warm soft studio lighting, kawaii aesthetic, chestnut brown fur, cream around mouth.",
       "framing_negative_extra": "full body, whole character, eyes, nose, ears, head, arms, legs, tail",
       "sprites": [
         {
@@ -100,7 +100,7 @@
 
     "tail": {
       "count": 5,
-      "framing_instruction": "ISOLATED close-up of ONLY the bushy tail of a chubby cartoon squirrel character, cropped tight to show just the tail with its base/root attachment point visible, no other body parts, on plain pure white background for clean alpha-matte extraction. Same art style and color as the character: stylized 2D, soft cel-shading, warm chestnut brown fur tone with darker stripe accents.",
+      "framing_instruction": "ISOLATED close-up of ONLY the bushy tail of a chubby chibi 3D cute mascot squirrel character, cropped tight to show just the tail with its base/root attachment point visible, no other body parts, on plain pure white background for clean alpha-matte extraction. Same art style and color as the character: polished 3D rendered cute mascot, soft volumetric fluffy fur, warm soft studio lighting, kawaii aesthetic, warm chestnut brown fur tone with darker stripe accents.",
       "framing_negative_extra": "full body, whole character, head, eyes, ears, arms, legs, face",
       "sprites": [
         {
@@ -128,7 +128,7 @@
 
     "ears": {
       "count": 3,
-      "framing_instruction": "ISOLATED close-up of ONLY the pair of small rounded ears of a chubby cartoon squirrel character, cropped tight to show just both ears with their attachment to the top of the head visible, no other body parts, no face, no eyes, on plain pure white background for clean alpha-matte extraction. Same art style and color: stylized 2D, soft cel-shading, chestnut brown fur outer, soft pink inner ear visible.",
+      "framing_instruction": "ISOLATED close-up of ONLY the pair of small rounded ears of a chubby chibi 3D cute mascot squirrel character, cropped tight to show just both ears with their attachment to the top of the head visible, no other body parts, no face, no eyes, on plain pure white background for clean alpha-matte extraction. Same art style and color: polished 3D rendered cute mascot, soft volumetric fluffy fur, warm soft studio lighting, kawaii aesthetic, chestnut brown fur outer, soft pink inner ear visible.",
       "framing_negative_extra": "full body, whole character, eyes, mouth, nose, face, arms, legs, tail, single ear (must show both)",
       "sprites": [
         {
