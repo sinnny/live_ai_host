@@ -34,6 +34,47 @@ def _file_sha(path: Path) -> str:
     return f"sha256:{h.hexdigest()}"
 
 
+def _patch_cosyvoice_load_wav() -> None:
+    """Workaround for a CosyVoice frontend bug.
+
+    Trace (per README usage, tensor-input flow):
+      inference_cross_lingual(text, prompt_speech_16k)   # tensor
+        → frontend.frontend_cross_lingual(text, prompt_wav, ...)
+        → frontend.frontend_zero_shot(text, '', prompt_wav, ...)
+        → frontend._extract_speech_feat(prompt_wav)
+        → file_utils.load_wav(prompt_wav, 24000)        # expects PATH
+
+    `load_wav` then calls `torchaudio.load(wav, ...)` and dies because the
+    arg is a tensor, not a path. The README's example does pass a tensor —
+    this is an internal-API mismatch in the cloned version. Patch `load_wav`
+    in both modules where it's referenced (the module-level import in
+    cosyvoice.cli.frontend binds at import time and won't update otherwise).
+    """
+    import torch as _torch
+    import torchaudio as _torchaudio
+    import cosyvoice.utils.file_utils as _cv_file_utils
+    import cosyvoice.cli.frontend as _cv_frontend
+
+    if getattr(_cv_file_utils, "_TENSOR_LOAD_WAV_PATCHED", False):
+        return
+
+    _original = _cv_file_utils.load_wav
+
+    def _patched(wav, target_sample_rate):
+        if isinstance(wav, _torch.Tensor):
+            speech = wav if wav.dim() == 2 else wav.unsqueeze(0)
+            # Our voice_ref / synthesize paths always pre-load tensors at
+            # 16 kHz; CosyVoice's internal callers ask for 24 kHz output.
+            if target_sample_rate != 16000:
+                speech = _torchaudio.transforms.Resample(16000, target_sample_rate)(speech)
+            return speech
+        return _original(wav, target_sample_rate)
+
+    _cv_file_utils.load_wav = _patched
+    _cv_frontend.load_wav = _patched
+    _cv_file_utils._TENSOR_LOAD_WAV_PATCHED = True
+
+
 def _load_cosyvoice():
     """Lazy import — CosyVoice 2 is heavy and not present locally on Mac."""
     try:
@@ -44,6 +85,7 @@ def _load_cosyvoice():
             "PYTHONPATH and the model weights are reachable (HuggingFace cache). "
             f"Underlying error: {exc!r}"
         )
+    _patch_cosyvoice_load_wav()
     # CosyVoice loads weights via ModelScope's snapshot_download, NOT HuggingFace.
     # The canonical ModelScope ID is `iic/CosyVoice2-0.5B` (per CosyVoice's
     # GitHub README). HuggingFace-style IDs (e.g. "FunAudioLLM/CosyVoice2-0.5B")
