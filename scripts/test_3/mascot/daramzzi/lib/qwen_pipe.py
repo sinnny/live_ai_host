@@ -18,7 +18,7 @@ from pathlib import Path
 from typing import Optional
 
 import torch
-from diffusers import DiffusionPipeline, DPMSolverMultistepScheduler
+from diffusers import DiffusionPipeline
 from PIL import Image
 
 
@@ -55,12 +55,9 @@ def get_pipeline(
         torch_dtype=dtype,
         trust_remote_code=True,
     )
-    # Some Qwen-Image releases ship a non-DPM scheduler; only swap if the
-    # current scheduler exposes a config we can re-instantiate from.
-    try:
-        pipe.scheduler = DPMSolverMultistepScheduler.from_config(pipe.scheduler.config)
-    except Exception:  # noqa: BLE001 — defensive scheduler swap
-        pass
+    # NOTE: Qwen-Image ships its own flow-matching scheduler that consumes
+    # `sigmas` in set_timesteps(). Do NOT swap to DPMSolverMultistep — that
+    # scheduler doesn't accept custom sigmas and the pipeline will error.
 
     pipe.set_progress_bar_config(disable=True)
 
@@ -73,17 +70,14 @@ def get_pipeline(
         # Cuts peak VRAM from ~44 GB to ~6-10 GB. Submodules stream to GPU
         # one at a time during the forward pass.
         pipe.enable_model_cpu_offload()
-        # Further reduce VAE peak memory at decode time.
-        for attr in ("enable_vae_tiling", "enable_vae_slicing"):
-            try:
-                getattr(pipe, attr)()
-            except (AttributeError, NotImplementedError):
-                pass
-        # Attention slicing helps too on 48 GB cards; safe to enable.
-        try:
-            pipe.enable_attention_slicing()
-        except (AttributeError, NotImplementedError):
-            pass
+        # Further reduce VAE peak memory at decode time. The pipe-level wrappers
+        # are deprecated in QwenImagePipeline; call directly on pipe.vae.
+        if hasattr(pipe, "vae") and pipe.vae is not None:
+            for attr in ("enable_tiling", "enable_slicing"):
+                try:
+                    getattr(pipe.vae, attr)()
+                except (AttributeError, NotImplementedError):
+                    pass
     else:
         pipe = pipe.to(device)
 
