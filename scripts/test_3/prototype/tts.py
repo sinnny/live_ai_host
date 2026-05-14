@@ -225,10 +225,15 @@ def synthesize(script_path: str, voice_path: str, out_dir: str, resume: bool) ->
             audio = sf.read(str(seg_wav))[0]
         else:
             chunks = []
+            # CosyVoice 2 README invokes inference_zero_shot positionally,
+            # not with kwargs — the parent CosyVoice class's signature uses
+            # different parameter names than the docstrings suggest. Positional
+            # call matches the README example verbatim:
+            #   cosyvoice.inference_zero_shot(tts_text, prompt_text, prompt_speech_16k, stream=False)
             for out_chunk in model.inference_zero_shot(
-                tts_text=seg["text"],
-                prompt_text=prompt_text,
-                prompt_speech_16k=ref_audio,
+                seg["text"],
+                prompt_text,
+                ref_audio,
                 stream=False,
                 speed=speed,
             ):
