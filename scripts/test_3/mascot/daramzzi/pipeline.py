@@ -119,11 +119,33 @@ def lora_train_cmd(config_path: str, force: bool) -> None:
 @cli.command()
 @click.option("--config", "config_path", default="daramzzi_config.yaml", show_default=True)
 @click.option("--only", multiple=True, help="layer/state to regenerate; repeatable.")
+@click.option(
+    "--layer",
+    multiple=True,
+    type=click.Choice(["expression", "mouth", "tail", "ears"]),
+    help="Regenerate every sprite in this layer; repeatable. Mutually exclusive with --only.",
+)
 @click.option("--force/--no-force", default=False)
-def sprites(config_path: str, only: tuple[str, ...], force: bool) -> None:
-    """Stage 5.5 — generate the 24 layered sprites (with LoRA)."""
+def sprites(config_path: str, only: tuple[str, ...], layer: tuple[str, ...], force: bool) -> None:
+    """Stage 5.5 — generate the 24 layered sprites.
+
+    Expression sprites use the trained Daramzzi LoRA; mouth/tail/ears sprites
+    use base Qwen-Image only (LoRA's full-character bias breaks isolated
+    body-part prompts).
+    """
     cfg = _load(config_path)
-    _run_stage("5.5 sprites", lambda: stage_sprites.run(cfg, only=list(only) or None, force=force))
+    if only and layer:
+        raise click.ClickException("Pass --only OR --layer, not both.")
+    resolved_only: list[str] | None
+    if layer:
+        # Expand each layer into its state list from the config.
+        resolved_only = []
+        for lname in layer:
+            for state in cfg.sprite_layers[lname]["states"]:
+                resolved_only.append(f"{lname}/{state}")
+    else:
+        resolved_only = list(only) or None
+    _run_stage("5.5 sprites", lambda: stage_sprites.run(cfg, only=resolved_only, force=force))
 
 
 @cli.command()
