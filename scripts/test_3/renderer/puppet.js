@@ -1,13 +1,21 @@
-// Composes 4 layers (expression z=0, tail z=1, ears z=2, mouth z=3)
-// per FSD renderer.md §5.2 composition order.
+// Phase 0 simplified rig: expression layer only.
+//
+// The FSD specifies a 4-layer composite (expression z=0, tail z=1, ears z=2,
+// mouth z=3) where the overlay layers are isolated body-part sprites. In
+// practice, generating those isolated overlay sprites with current OSS image
+// gen (Qwen-Image ± LoRA) is unreliable — the prompts get overridden by
+// full-character training distribution. Until we have a working overlay
+// pipeline (Phase 1 polish or different image-gen approach), we render only
+// the expression layer and drive lip-sync by swapping between two expression
+// sprites at the timeline level.
+//
+// To restore the full 4-layer composition later: set ORDER back to the FSD
+// list and ensure the atlas's overlay layers are real isolated body parts.
 
 import { SpriteLayer } from './sprite_layer.js';
 
 const ORDER = [
   { name: 'expression', zOrder: 0, crossfadeKey: 'expression_ms' },
-  { name: 'tail',       zOrder: 1, crossfadeKey: 'tail_ms' },
-  { name: 'ears',       zOrder: 2, crossfadeKey: 'ears_ms' },
-  { name: 'mouth',      zOrder: 3, crossfadeKey: 'mouth_ms' },
 ];
 
 export class Puppet {

@@ -178,10 +178,15 @@ def render(script_path, atlas_dir, voice_path, out_dir, renderer_config,
     if resume and alignment_json.exists():
         status = "skipped"
     else:
+        # Phase 0 simplified rig: drive lip-sync from amplitude envelope, not
+        # phoneme-matched viseme detection. Rhubarb is unreliable on Korean
+        # audio (phase_0_v1/stage4 findings) and the simplified rig only needs
+        # a binary speaking/silent signal anyway.
         _run([
             sys.executable, str(HERE / "phoneme_alignment.py"),
             "--audio", str(tts_dir / "audio.wav"),
             "--output", str(alignment_json),
+            "--engine", "amplitude",
         ], out / "logs" / "phoneme.log")
         status = "success"
     manifest["stages"]["phonemes"] = {
