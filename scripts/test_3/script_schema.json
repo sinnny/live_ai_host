@@ -1,0 +1,83 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "Daramzzi prototype script schema",
+  "description": "Schema for a hand-written Korean script driving the prototype renderer. See docs/phase_0_v2/prototype_spec.md for usage.",
+  "type": "object",
+  "required": ["schema_version", "title", "language", "segments"],
+  "properties": {
+    "schema_version": {
+      "type": "integer",
+      "const": 1
+    },
+    "title": {
+      "type": "string",
+      "description": "Human-readable title for this clip"
+    },
+    "language": {
+      "type": "string",
+      "enum": ["ko", "en"],
+      "description": "ISO language code for TTS"
+    },
+    "default_state": {
+      "type": "object",
+      "description": "Fallback layer states when a segment doesn't specify",
+      "properties": {
+        "expression": { "$ref": "#/definitions/expression" },
+        "tail": { "$ref": "#/definitions/tail" },
+        "ears": { "$ref": "#/definitions/ears" }
+      },
+      "additionalProperties": false
+    },
+    "segments": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "type": "object",
+        "required": ["text"],
+        "properties": {
+          "text": {
+            "type": "string",
+            "minLength": 1,
+            "description": "Korean text to be spoken by TTS"
+          },
+          "expression": { "$ref": "#/definitions/expression" },
+          "tail": { "$ref": "#/definitions/tail" },
+          "ears": { "$ref": "#/definitions/ears" },
+          "pause_after_ms": {
+            "type": "integer",
+            "minimum": 0,
+            "maximum": 5000,
+            "default": 0,
+            "description": "Silence inserted after this segment, before the next"
+          },
+          "speed_modifier": {
+            "type": "number",
+            "minimum": 0.5,
+            "maximum": 1.5,
+            "default": 1.0,
+            "description": "TTS speed multiplier. <1 slower (e.g. 0.8 for cheek-stuffed mumble), >1 faster"
+          },
+          "sfx": {
+            "type": "string",
+            "description": "Optional SFX cue layered with the segment (e.g. \"앙\" for bite, \"딸꾹\" for hiccup)"
+          }
+        },
+        "additionalProperties": false
+      }
+    }
+  },
+  "definitions": {
+    "expression": {
+      "type": "string",
+      "enum": ["neutral", "cheek_stuff", "panic", "pleading", "victory", "sleepy", "confused", "sneaky", "laughing", "embarrassed"]
+    },
+    "tail": {
+      "type": "string",
+      "enum": ["relaxed", "alert", "puffed", "curled", "wagging"]
+    },
+    "ears": {
+      "type": "string",
+      "enum": ["up", "flat", "perked"]
+    }
+  }
+}

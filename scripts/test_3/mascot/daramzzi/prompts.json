@@ -1,0 +1,158 @@
+{
+  "schema_version": 1,
+  "character": "daramzzi",
+  "bible_ref": "docs/characters/daramzzi.md",
+  "generated_at": "2026-05-13",
+  "generated_by": "static (hand-written from bible, no LLM API call at pipeline runtime)",
+
+  "base": {
+    "prompt": "A chubby chibi cartoon character of a Korean ground squirrel (chipmunk) intern named Daramzzi. Round pear-shaped body, head approximately 1.3 times wider than body, warm chestnut brown fur with cream belly and chin, two simplified thin dark dorsal stripes on her back. Wearing a half-apron in rust-orange color with one large front pocket and a small rectangular name tag reading 'Daramzzi'. A comically oversized headset microphone is on her head, the mic cup nearly the size of her ear. Stylized 2D illustration with soft cel-shading, clean line art, warm autumn color palette. Earnest and lovable expression. Single character centered, clean pure white background, full character framing.",
+    "negative_prompt": "hamster, photorealistic, realistic fur texture, dark, scary, gritty, edgy, sexy, sexualized, suggestive, sassy, sarcastic, smug, mean, evil, multiple characters, group of characters, text overlay, watermark, signature, low quality, blurry, distorted anatomy, extra limbs, mutated, cropped body, partial body"
+  },
+
+  "qwen_image_settings": {
+    "width": 1024,
+    "height": 1024,
+    "num_inference_steps": 50,
+    "guidance_scale": 7.5,
+    "scheduler": "DPMSolverMultistep"
+  },
+
+  "layers": {
+    "expression": {
+      "count": 10,
+      "framing_instruction": "Full body visible, standing or sitting upright facing the camera, character centered in frame. Mouth is closed (default closed-mouth pose). Tail and ears are in the state described per-sprite below.",
+      "sprites": [
+        {
+          "state": "neutral",
+          "prompt_suffix": "default presenter pose, a small soft polite smile, eyes open and bright looking at the camera, paws gently placed together at chest level, mouth closed, tail relaxed curving softly behind her body, ears upright and alert"
+        },
+        {
+          "state": "cheek_stuff",
+          "prompt_suffix": "eating pose with cheeks visibly BULGED ROUND with food packed inside (visible round full cheek pouches on both sides of face), eyes closed in blissful satisfaction with curved-arc closed eye lines, small contented smile above the bulged cheeks, mouth closed (food is inside cheeks), one paw raised holding a small snack, tail relaxed, ears upright"
+        },
+        {
+          "state": "panic",
+          "prompt_suffix": "frightened panicked expression, tail visibly PUFFED UP large and bushy standing vertical and inflated, eyes wide open with whites showing around tiny pupils, mouth small and slightly open in alarm O-shape, both paws raised in alarm, single sweat drop on forehead, ears alert and pointed up"
+        },
+        {
+          "state": "pleading",
+          "prompt_suffix": "begging desperate expression, watery glistening eyes (just shine on eyes, no actual tears falling), both paws clasped together at chest in earnest begging gesture, mouth small and slightly downturned, head tilted slightly downward and to the side, ears slightly tilted back, tail curled protectively around her body"
+        },
+        {
+          "state": "victory",
+          "prompt_suffix": "triumphant celebration pose, both arms raised straight up above head in victory, eyes bright sparkling open in joyful expression, mouth open wide in a big happy smile, tail vertical straight up proud, ears upright and perked, slight bouncing upward jump pose with feet off the ground"
+        },
+        {
+          "state": "sleepy",
+          "prompt_suffix": "sleepy tired expression, half-lidded droopy heavy eyelids, slight head tilt to one side, mouth in a small open O-shape of a yawn, one paw raised toward open mouth covering the yawn, tail loosely curled to the side, ears slightly flat and drooping"
+        },
+        {
+          "state": "confused",
+          "prompt_suffix": "confused puzzled expression, head tilted to one side at 30 degrees, ONE ear flat and ONE ear up (asymmetric), eyes wide and uncomprehending blinking, mouth small open in a question O-shape, one paw raised hesitantly to her chin in thought, tail relaxed"
+        },
+        {
+          "state": "sneaky",
+          "prompt_suffix": "mischievous sneaky pose, ONE eye closed in a wink ONE eye open wide and conspiratorial, paw or finger raised to lips in a SHHH shushing gesture, slight mischievous half-smile, body crouched low and angled to the side, tail relaxed but flicking slightly, both ears tilted forward attentively"
+        },
+        {
+          "state": "laughing",
+          "prompt_suffix": "joyful laughing pose, eyes squeezed shut in laughter shown as curved-arc closed eye lines like inverted U shapes, mouth wide open in a big laughing smile, both paws clutching her belly, slight head tilt back, tail wagging with a happy curve, ears up"
+        },
+        {
+          "state": "embarrassed",
+          "prompt_suffix": "shy embarrassed expression, light pink blush patches visible on both cheeks through her fur, eyes looking down and away sheepishly, small awkward closed-mouth smile, paws fidgeting near her apron pocket, ears slightly tilted back, tail relaxed but tucked tight against body"
+        }
+      ]
+    },
+
+    "mouth": {
+      "count": 6,
+      "framing_instruction": "ISOLATED close-up of ONLY the mouth area of a chubby cartoon squirrel character, cropped tight to show just the mouth shape and immediate surrounding fur, no other body parts visible, on plain pure white background for clean alpha-matte extraction. Same art style as the full character: stylized 2D, soft cel-shading, chestnut brown fur, cream around mouth.",
+      "framing_negative_extra": "full body, whole character, eyes, nose, ears, head, arms, legs, tail",
+      "sprites": [
+        {
+          "state": "closed",
+          "prompt_suffix": "mouth completely closed in a small relaxed neutral line shape, small soft polite expression"
+        },
+        {
+          "state": "aa",
+          "prompt_suffix": "mouth open in a wide A-vowel shape (Korean 아 vowel), oval opening with the inside slightly visible, tongue resting at the bottom"
+        },
+        {
+          "state": "ih",
+          "prompt_suffix": "mouth open in a small narrow I-vowel shape (Korean 이 vowel), corners pulled slightly back, teeth slightly visible in a small smile-like opening"
+        },
+        {
+          "state": "ou",
+          "prompt_suffix": "mouth pursed in a rounded U-vowel shape (Korean 우 vowel), lips pushed forward in a small circle, like blowing out a candle"
+        },
+        {
+          "state": "ee",
+          "prompt_suffix": "mouth open in a wide E-vowel shape (Korean 에 vowel), corners pulled outward, mouth stretched horizontally, teeth slightly visible"
+        },
+        {
+          "state": "oh",
+          "prompt_suffix": "mouth open in a rounded O-vowel shape (Korean 오 vowel), circular opening medium-sized, lips relaxed and rounded"
+        }
+      ]
+    },
+
+    "tail": {
+      "count": 5,
+      "framing_instruction": "ISOLATED close-up of ONLY the bushy tail of a chubby cartoon squirrel character, cropped tight to show just the tail with its base/root attachment point visible, no other body parts, on plain pure white background for clean alpha-matte extraction. Same art style and color as the character: stylized 2D, soft cel-shading, warm chestnut brown fur tone with darker stripe accents.",
+      "framing_negative_extra": "full body, whole character, head, eyes, ears, arms, legs, face",
+      "sprites": [
+        {
+          "state": "relaxed",
+          "prompt_suffix": "tail in a relaxed natural curve, gently curving in a soft S-shape behind the body, full bushy volume, comfortable resting position"
+        },
+        {
+          "state": "alert",
+          "prompt_suffix": "tail in an alert upright position, vertical straight up, full bushy volume, attentive and ready stance"
+        },
+        {
+          "state": "puffed",
+          "prompt_suffix": "tail VISIBLY PUFFED UP much larger and more inflated than the relaxed state, bristled outward in all directions, the fur standing on end in panic, vertical orientation, exaggerated bushy volume nearly doubled in size"
+        },
+        {
+          "state": "curled",
+          "prompt_suffix": "tail curled tightly around itself in a protective ball shape, wrapped close in toward where the body would be, defensive protective posture"
+        },
+        {
+          "state": "wagging",
+          "prompt_suffix": "tail captured mid-motion in a happy expressive wagging curve, slight motion-blur softness on the tip, S-curve with the tip pointed up and to the side, suggesting cheerful movement"
+        }
+      ]
+    },
+
+    "ears": {
+      "count": 3,
+      "framing_instruction": "ISOLATED close-up of ONLY the pair of small rounded ears of a chubby cartoon squirrel character, cropped tight to show just both ears with their attachment to the top of the head visible, no other body parts, no face, no eyes, on plain pure white background for clean alpha-matte extraction. Same art style and color: stylized 2D, soft cel-shading, chestnut brown fur outer, soft pink inner ear visible.",
+      "framing_negative_extra": "full body, whole character, eyes, mouth, nose, face, arms, legs, tail, single ear (must show both)",
+      "sprites": [
+        {
+          "state": "up",
+          "prompt_suffix": "both ears upright in the default alert position, pointing slightly upward and outward, small rounded shape, soft pink inner ear color showing"
+        },
+        {
+          "state": "flat",
+          "prompt_suffix": "both ears flattened back against the head, drooping or tilted backward, sad or sleepy or submissive position, lower than the default"
+        },
+        {
+          "state": "perked",
+          "prompt_suffix": "both ears perked forward attentively, leaning slightly forward, in an extra-attentive or curious or sneaky listening position, more forward than the default up position"
+        }
+      ]
+    }
+  },
+
+  "composition_note": "Each final prompt is constructed by concatenating: base.prompt + ' ' + layer.framing_instruction + ' ' + sprite.prompt_suffix. The negative prompt is: base.negative_prompt + (', ' + layer.framing_negative_extra if present). Seed is config.seed + sprite_index for reproducibility.",
+
+  "validation_checklist": {
+    "all_24_sprites_present": "10 expression + 6 mouth + 5 tail + 3 ears = 24",
+    "no_hamster_drift": "every expression sprite must read as squirrel (tail visible in expression sprites)",
+    "isolated_overlays_have_white_bg": "mouth/tail/ears must have plain white background for clean BiRefNet matte",
+    "consistent_color_palette": "fur hue variance ≤ 5% across all 24 sprites (LoRA enforces this)"
+  }
+}
