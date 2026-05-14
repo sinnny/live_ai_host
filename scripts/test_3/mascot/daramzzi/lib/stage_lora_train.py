@@ -18,7 +18,20 @@ from .config import Config
 
 
 def _build_config(cfg: Config, dataset_dir: Path, output_dir: Path) -> dict:
-    """Construct AI-Toolkit train config (Qwen-Image LoRA, character-style preset)."""
+    """Construct AI-Toolkit train config for Qwen-Image LoRA training.
+
+    Mirrors the official `train_lora_qwen_image_24gb.yaml` preset shipped with
+    AI-Toolkit, tuned for 48 GB GPUs: we use qfloat8 quantization for both
+    the transformer and text encoder (skipping the 24 GB-only uint3
+    accuracy-recovery adapter), and drop `low_vram: true` since we have
+    headroom.
+
+    Critical fields for AI-Toolkit to identify Qwen-Image:
+      - model.arch: "qwen_image"            (the positive identifier)
+      - train.cache_text_embeddings: true   (required for Qwen-Image)
+      - train.train_text_encoder: false     (not supported for Qwen-Image)
+      - train.gradient_accumulation         (note: NOT `gradient_accumulation_steps`)
+    """
     return {
         "job": "extension",
         "config": {
@@ -46,26 +59,30 @@ def _build_config(cfg: Config, dataset_dir: Path, output_dir: Path) -> dict:
                             "caption_dropout_rate": 0.05,
                             "shuffle_tokens": False,
                             "cache_latents_to_disk": True,
-                            "resolution": [cfg.canvas.sprite_size],
+                            # Qwen-Image trains better on multiple resolutions
+                            "resolution": [512, 768, 1024],
                         }
                     ],
                     "train": {
                         "batch_size": cfg.lora_training.batch_size,
+                        "cache_text_embeddings": True,
                         "steps": cfg.lora_training.steps,
-                        "gradient_accumulation_steps": 1,
+                        "gradient_accumulation": 1,
                         "train_unet": True,
                         "train_text_encoder": False,
                         "gradient_checkpointing": True,
                         "noise_scheduler": "flowmatch",
                         "optimizer": "adamw8bit",
                         "lr": cfg.lora_training.learning_rate,
-                        "ema_config": {"use_ema": True, "ema_decay": 0.99},
                         "dtype": "bf16",
                     },
                     "model": {
                         "name_or_path": cfg.base_model,
-                        "is_flux": False,
+                        "arch": "qwen_image",
                         "quantize": True,
+                        "qtype": "qfloat8",
+                        "quantize_te": True,
+                        "qtype_te": "qfloat8",
                     },
                     "sample": {
                         "sampler": "flowmatch",
@@ -73,10 +90,13 @@ def _build_config(cfg: Config, dataset_dir: Path, output_dir: Path) -> dict:
                         "width": cfg.canvas.sprite_size,
                         "height": cfg.canvas.sprite_size,
                         "prompts": [
-                            f"a chubby cartoon ground squirrel intern named {cfg.character_name}, "
-                            "default presenter pose, neutral attentive expression"
+                            f"a chubby chibi 3D rendered cute mascot Korean ground squirrel "
+                            f"named {cfg.character_name}, default presenter pose, neutral attentive expression, "
+                            "rust-orange half-apron with name tag, comically oversized headset microphone, "
+                            "warm chestnut brown soft volumetric fur, polished 3D mascot rendering"
                         ],
-                        "neg": "hamster, photorealistic, dark, edgy, sexy, low quality",
+                        "neg": "hamster, photograph of real animal, dark, edgy, sexy, "
+                        "low quality, flat 2D illustration, line art, cel-shading",
                         "seed": cfg.seed,
                         "walk_seed": True,
                         "guidance_scale": 4,
