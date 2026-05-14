@@ -44,9 +44,14 @@ def _load_cosyvoice():
             "PYTHONPATH and the model weights are reachable (HuggingFace cache). "
             f"Underlying error: {exc!r}"
         )
-    # Standard CosyVoice 2 init path. The README says model weights resolve
-    # automatically from HF; the SFT model id is the right default.
-    return CosyVoice2("FunAudioLLM/CosyVoice2-0.5B")
+    # CosyVoice loads weights via ModelScope's snapshot_download, NOT HuggingFace.
+    # The canonical ModelScope ID is `iic/CosyVoice2-0.5B` (per CosyVoice's
+    # GitHub README). HuggingFace-style IDs (e.g. "FunAudioLLM/CosyVoice2-0.5B")
+    # error with "The request model does not exist!".
+    # Defaults: load_jit=True, load_trt=False, load_vllm=False, fp16=True.
+    # We don't have TensorRT installed (filtered out of setup_runpod.sh), so
+    # the default load_trt=False is what we want.
+    return CosyVoice2("iic/CosyVoice2-0.5B")
 
 
 @click.group()
@@ -165,7 +170,7 @@ def synthesize(script_path: str, voice_path: str, out_dir: str, resume: bool) ->
         "voice_ref": str(voice_path_p),
         "voice_ref_sha": _file_sha(voice_path_p),
         "model": "CosyVoice2",
-        "model_version": "FunAudioLLM/CosyVoice2-0.5B",
+        "model_version": "iic/CosyVoice2-0.5B",
         "sample_rate": SAMPLE_RATE,
         "total_duration_ms": cursor_ms,
         "segments": segments_meta,
