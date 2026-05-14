@@ -172,15 +172,48 @@ All preserved on the 100 GB network volume. Pod terminated 2026-05-14 to halt id
 
 5. **`make_mascot` pipeline carries forward.** The 8-stage atlas generator and Daramzzi LoRA are reusable. If we move to talking-head video, we feed it the atlas. If we move to Live2D, we feed an artist the seed. The character identity work is sunk-cost in a good way.
 
+6. **Render speed is dominated by `page.screenshot(type='png')` at 1080p (~400ms/frame), not by Three.js render itself.** Today's render took 43 minutes for 5775 frames (~446 ms/frame). If we ever return to a frame-capture-based renderer (Phase 1 sprite-puppet retry or test_3 live capture), the cheapest wins are:
+   - Switch `type='png'` → `type='jpeg', quality=85` (~2× faster, quality drop invisible for prototype evaluation)
+   - Drop 60 fps → 30 fps (~2× faster — 24-30 fps is sufficient for lip-sync)
+   - Render at 720p then upscale at encode (~2× faster)
+   - **Live stream mode** (FSD §4.1): Playwright virtual webcam → ffmpeg pipe, bypass PNG entirely. ~5-10× faster but requires v4l2loopback setup and is the right answer for test_3 live runtime.
+   - Multiple Playwright contexts/tabs rendering frame ranges in parallel.
+
+   Stacking JPEG + 30 fps + 720p alone would have cut today's 43-min render to ~5 min. **Not relevant for the immediate next test (EchoMimic v3 produces video directly, no frame-by-frame), but is relevant for any future rig that returns to sprite-puppet or for the eventual live-runtime test_3 path.**
+
 ---
 
-## 8. Open items for next session
+## 8. Open items for next session — Test B1 spec
 
-- [ ] Founder approval of recommendation (Path B1 first, B3 fallback)
-- [ ] EchoMimic v3 environment setup on fresh RunPod pod (reuse network volume)
-- [ ] Clean Korean TTS reference WAV — founder records own voice OR find a public-domain Korean sample
-- [ ] Run EchoMimic v3 prototype clip: `seed.png` + TTS WAV → output.mp4
-- [ ] Apply 4-condition pass test to the new output
+### Test B1: EchoMimic v3 on stylized Daramzzi
+
+| | |
+|---|---|
+| Hypothesis | EchoMimic v3's photoreal+KR lip-sync failure (Phase 0 v1) may be on-brand for a cartoon mascot per PRD §1.2 "failure-modes-as-style" thesis. Imprecise mouth shape on a stylized squirrel reads as character quirk, not as broken. |
+| Input image | `mascot/daramzzi/work/02_seed/seed.png` (preferred — cleaner) or `mascot/daramzzi/atlas/expression/neutral.png` |
+| Input audio | Clean Korean TTS WAV, 10-15 seconds, "다람찌" persona-appropriate tone |
+| Output | `prototype_runs/clip_b1/output.mp4` (10-15 sec talking Daramzzi) |
+| Pass criteria | `prototype_spec.md` §1.3 — all 4 conditions yes |
+| Time budget | 1-2 days (setup EchoMimic v3 on fresh pod + run + evaluate) |
+| GPU budget | ~$10 (~$1.20/hr × ~8 hours of setup + iteration) |
+| Escalation | If any pass condition fails → immediately try Path B3 (paid Hedra). Do NOT spend > 2 days tuning EchoMimic v3. |
+
+**Pre-requisite: clean Korean TTS WAV.** Current CosyVoice 2 output is unsuitable (Chinese-female timbre, segment-start silence bloat, would contaminate the EchoMimic evaluation). Three options ordered by recommended:
+
+1. **Founder records own voice** (10-15 sec, iPhone Voice Memos → upload as `voice/founder_ref.wav`). Cheapest, highest controllability, voice character carries directly into EchoMimic output.
+2. Mozilla Common Voice Korean dataset (CC0) — find a female Korean clip with the right energy.
+3. Different OSS Korean TTS (Coqui XTTS Korean variant, etc.). Adds another untested component — probably not worth the risk for this validation.
+
+### Checklist for next session
+
+- [ ] Founder approval of B1 recommendation and decision on TTS approach (record vs. dataset vs. OSS-TTS)
+- [ ] Founder-recorded WAV uploaded to network volume (if going with option 1)
+- [ ] Spin up fresh RunPod L40S pod, attach existing `daramzzi-phase0` network volume
+- [ ] `bash scripts/test_3/setup_runpod.sh` to restore deps on fresh container disk
+- [ ] EchoMimic v3 environment setup (reuse Phase 0 v1 work if present; otherwise clone fresh)
+- [ ] Run EchoMimic v3: `seed.png` + Korean WAV → `prototype_runs/clip_b1/output.mp4`
+- [ ] Apply 4-condition pass test
+- [ ] Outcome → update post-mortem #2 if fails, OR write Phase 0 v3 plan if passes
 
 ---
 
