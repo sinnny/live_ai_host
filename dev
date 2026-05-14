@@ -16,12 +16,18 @@ Commands:
                       Pass-through flags: --listen, --port 8189, --cpu, ...
   download-weights    Download Phase 0 model weights (~18 GB) into ComfyUI's
                       models/ tree. Idempotent + resumable.
+  fal <model> [flags] Stage 4 paid talking-head test on fal.ai.
+                      Models:  aurora (Test 4), omnihuman (Test 5), kling (Test 6)
+                      Flags:   --variant {hero,test_2}, --dry-run, --force
   help                Show this help
 
 Examples:
   ./dev comfyui
   ./dev comfyui --port 8189
   ./dev download-weights
+  ./dev fal aurora --dry-run
+  ./dev fal aurora
+  ./dev fal kling --variant test_2
 EOF
 }
 
@@ -34,6 +40,9 @@ case "$cmd" in
     ;;
   download-weights)
     exec "$PROJECT_ROOT/scripts/download_weights.sh" "$@"
+    ;;
+  fal)
+    exec uv run --project "$PROJECT_ROOT" python "$PROJECT_ROOT/scripts/fal_call.py" "$@"
     ;;
   help|-h|--help|"")
     usage
