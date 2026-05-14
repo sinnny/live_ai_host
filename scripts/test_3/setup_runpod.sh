@@ -36,6 +36,10 @@ export TRANSFORMERS_CACHE="$HF_HOME_PATH"
 export AI_TOOLKIT_ROOT="$AI_TOOLKIT_ROOT"
 export PYTHONPATH="/opt/cosyvoice:/opt/cosyvoice/third_party/Matcha-TTS:\${PYTHONPATH:-}"
 export PATH="\$AI_TOOLKIT_ROOT:\$PATH"
+# Mitigate VRAM fragmentation on 48 GB cards loading Qwen-Image (~40 GB bf16).
+export PYTORCH_CUDA_ALLOC_CONF=expandable_segments:True
+# Silence pip's "running as root" reminder on RunPod (we are root by design).
+export PIP_ROOT_USER_ACTION=ignore
 EOF
 if ! grep -q "source $ENV_FILE" /root/.bashrc 2>/dev/null; then
   echo "source $ENV_FILE" >> /root/.bashrc
