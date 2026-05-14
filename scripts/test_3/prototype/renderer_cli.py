@@ -84,6 +84,15 @@ async def _serve_and_render(
         # easiest reliable path is to use route() to inject responses.
         async def handle(route, request):
             url = request.url
+            # External CDN requests (three.js from unpkg, etc.) bypass our
+            # in-process file server. Without this, the route handler would
+            # try to find these as local files and return 404, breaking the
+            # ESM import map.
+            EXTERNAL_HOSTS = ("unpkg.com", "cdn.jsdelivr.net", "cdn.skypack.dev",
+                              "esm.sh", "cdn.cloudflare.com")
+            if any(h in url for h in EXTERNAL_HOSTS):
+                await route.continue_()
+                return
             rel = url.split("/", 3)[-1] if "://" in url else url
             # Normalize to a file under `work`
             local = work / Path(rel).name if "/" not in rel else work / rel
@@ -104,7 +113,20 @@ async def _serve_and_render(
             await route.fulfill(status=200, content_type=ctype, body=local.read_bytes())
 
         await context.route("**/*", handle)
+
+        # Pipe page console messages + JS errors to our stderr so failures
+        # are visible in render.log without attaching DevTools.
+        page.on("console", lambda msg: print(f"[browser:{msg.type}] {msg.text}", flush=True))
+        page.on("pageerror", lambda err: print(f"[browser:pageerror] {err}", flush=True))
+
         await page.goto("https://renderer.local/index.html", wait_until="domcontentloaded")
+
+        # ESM module imports (incl. three.js from unpkg) finish AFTER
+        # DOMContentLoaded. Wait for main.js to actually define window.bootRender
+        # before we try to invoke it.
+        await page.wait_for_function(
+            "typeof window.bootRender === 'function'", timeout=60_000
+        )
 
         # Boot the renderer
         await page.evaluate(
