@@ -26,3 +26,11 @@ __pycache__/
 
 # macOS
 .DS_Store
+
+# Phase 0 v2 intermediate artifacts (not committed; final atlas under atlas/ is)
+scripts/test_3/mascot/*/work/
+scripts/test_3/mascot/*/atlas/
+scripts/test_3/prototype_runs/
+scripts/test_3/voice/*.wav
+scripts/test_3/voice/*.txt
+

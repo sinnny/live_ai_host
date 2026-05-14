@@ -11,25 +11,50 @@ usage() {
   cat <<'EOF'
 Usage: ./dev <command> [args...]
 
-Commands:
-  comfyui [args]      Launch ComfyUI on Mac MPS
-                      Pass-through flags: --listen, --port 8189, --cpu, ...
-  download-weights    Download Phase 0 model weights (~18 GB) into ComfyUI's
-                      models/ tree. Idempotent + resumable.
-  fal <model> [flags] Stage 4 paid talking-head test on fal.ai.
-                      Models:  aurora (Test 4), omnihuman (Test 5), kling (Test 6)
-                      Flags:   --variant {hero,test_2}, --dry-run, --force
-  help                Show this help
+Local commands (run on Mac):
+  comfyui [args]            Launch ComfyUI on Mac MPS
+  download-weights          Download Phase 0 v1 model weights (~18 GB)
+  fal <model> [flags]       Phase 0 v1 paid talking-head test on fal.ai
+                            (legacy; aurora/omnihuman/kling — see scripts/fal_call.py)
+
+Phase 0 v2 — local (no GPU needed):
+  validate-script <path>    Validate a script JSON against script_schema.json
+  init-config               Emit scripts/test_3/mascot/daramzzi/daramzzi_config.yaml
+                            from FSD §3.2 defaults
+  smoke                     Lint check + schema check + JS syntax sanity
+                            (everything that can run without RunPod)
+
+Phase 0 v2 — remote (run inside RunPod via Docker):
+  mascot build              Build the make_mascot docker image
+  mascot stage <stage>      Run one stage of pipeline.py
+                            (brief|seed|lora-dataset|lora-train|sprites|alpha|normalize|pack|status)
+  mascot run-all [--start S]  Run all stages from --start onward
+  prototype build           Build the prototype docker image
+  prototype voice-ref       One-time CosyVoice 2 voice reference for Daramzzi
+  prototype render <clip>   Run full TTS → phoneme → render → encode pipeline
+  prototype validate <clip> Schema-validate a clip script
+
+RunPod helpers:
+  runpod push               git push, then ssh runpod 'git pull' (assumes ~/.ssh/config alias 'runpod')
+  runpod pull-artifacts     rsync atlas/, prototype_runs/ from RunPod to local
+  runpod ssh                Open an SSH session to the runpod alias
+
+  help                      Show this help
 
 Examples:
-  ./dev comfyui
-  ./dev comfyui --port 8189
-  ./dev download-weights
-  ./dev fal aurora --dry-run
-  ./dev fal aurora
-  ./dev fal kling --variant test_2
+  ./dev validate-script scripts/test_3/scripts/clip_01.json
+  ./dev init-config
+  ./dev mascot build
+  ./dev mascot stage seed
+  ./dev mascot run-all --start lora-dataset
+  ./dev prototype render scripts/test_3/scripts/clip_01.json
 EOF
 }
+
+MASCOT_DIR="$PROJECT_ROOT/scripts/test_3/mascot/daramzzi"
+PROTOTYPE_DIR="$PROJECT_ROOT/scripts/test_3/prototype"
+RUNPOD_ALIAS="${RUNPOD_SSH_ALIAS:-runpod}"
+RUNPOD_REMOTE="${RUNPOD_REMOTE_DIR:-/workspace/live_ai_host}"
 
 cmd="${1:-help}"
 shift || true
@@ -44,6 +69,126 @@ case "$cmd" in
   fal)
     exec uv run --project "$PROJECT_ROOT" python "$PROJECT_ROOT/scripts/fal_call.py" "$@"
     ;;
+
+  validate-script)
+    script="${1:?usage: ./dev validate-script <path-to-script.json>}"
+    exec uv run --with jsonschema --project "$PROJECT_ROOT" python -c "
+import json, sys
+from pathlib import Path
+import jsonschema
+schema = json.loads(Path('scripts/test_3/script_schema.json').read_text())
+script = json.loads(Path('$script').read_text())
+jsonschema.validate(script, schema)
+print('OK: $script validates against script_schema.json')
+print('  title:', script.get('title'))
+print('  segments:', len(script.get('segments', [])))
+"
+    ;;
+
+  init-config)
+    exec uv run --project "$PROJECT_ROOT" python "$MASCOT_DIR/pipeline.py" init \
+      --output "$MASCOT_DIR/daramzzi_config.yaml" "$@"
+    ;;
+
+  smoke)
+    # Local-only sanity: schema check + JS syntax + Python compile.
+    echo "[smoke] validating clip_01.json..."
+    "$0" validate-script scripts/test_3/scripts/clip_01.json
+    echo "[smoke] python -m compileall on test_3 sources..."
+    uv run --project "$PROJECT_ROOT" python -m compileall -q \
+      "$MASCOT_DIR" "$PROTOTYPE_DIR" || true
+    echo "[smoke] node --check on renderer JS..."
+    for f in "$PROJECT_ROOT"/scripts/test_3/renderer/*.js; do
+      node --check "$f" || echo "    fail: $f"
+    done
+    echo "[smoke] done"
+    ;;
+
+  mascot)
+    sub="${1:-help}"
+    shift || true
+    case "$sub" in
+      build)
+        cd "$MASCOT_DIR" && exec docker build -t daramzzi-pipeline -f Dockerfile .
+        ;;
+      stage)
+        stage_name="${1:?usage: ./dev mascot stage <brief|seed|lora-dataset|lora-train|sprites|alpha|normalize|pack|status>}"
+        shift
+        cd "$MASCOT_DIR" && exec docker run --rm --gpus all -v "$MASCOT_DIR:/work" daramzzi-pipeline \
+          python pipeline.py "$stage_name" "$@"
+        ;;
+      run-all)
+        cd "$MASCOT_DIR" && exec docker run --rm --gpus all -v "$MASCOT_DIR:/work" daramzzi-pipeline \
+          python pipeline.py run-all "$@"
+        ;;
+      *)
+        echo "mascot subcommand: build | stage <name> | run-all [--start S]" >&2
+        exit 1
+        ;;
+    esac
+    ;;
+
+  prototype)
+    sub="${1:-help}"
+    shift || true
+    case "$sub" in
+      build)
+        cd "$PROTOTYPE_DIR" && exec docker build -t daramzzi-prototype -f Dockerfile .
+        ;;
+      voice-ref)
+        cd "$PROJECT_ROOT/scripts/test_3" && exec docker run --rm --gpus all \
+          -v "$PROJECT_ROOT/scripts/test_3:/work" daramzzi-prototype \
+          python prototype/prototype.py voice-ref \
+            --output voice/daramzzi_ref.wav "$@"
+        ;;
+      validate)
+        script="${1:?usage: ./dev prototype validate <script.json>}"
+        exec "$0" validate-script "$script"
+        ;;
+      render)
+        script="${1:?usage: ./dev prototype render <script.json>}"
+        shift || true
+        clip_name="$(basename "$script" .json)"
+        cd "$PROJECT_ROOT/scripts/test_3" && exec docker run --rm --gpus all \
+          -v "$PROJECT_ROOT/scripts/test_3:/work" daramzzi-prototype \
+          python prototype/prototype.py render \
+            --script "$script" \
+            --atlas mascot/daramzzi/atlas/ \
+            --voice voice/daramzzi_ref.wav \
+            --output-dir "prototype_runs/$clip_name/" \
+            "$@"
+        ;;
+      *)
+        echo "prototype subcommand: build | voice-ref | validate <script> | render <script>" >&2
+        exit 1
+        ;;
+    esac
+    ;;
+
+  runpod)
+    sub="${1:-help}"
+    shift || true
+    case "$sub" in
+      push)
+        git -C "$PROJECT_ROOT" push
+        ssh "$RUNPOD_ALIAS" "cd $RUNPOD_REMOTE && git pull"
+        ;;
+      pull-artifacts)
+        rsync -av "$RUNPOD_ALIAS:$RUNPOD_REMOTE/scripts/test_3/mascot/daramzzi/atlas/" \
+          "$PROJECT_ROOT/scripts/test_3/mascot/daramzzi/atlas/"
+        rsync -av "$RUNPOD_ALIAS:$RUNPOD_REMOTE/scripts/test_3/prototype_runs/" \
+          "$PROJECT_ROOT/scripts/test_3/prototype_runs/"
+        ;;
+      ssh)
+        exec ssh "$RUNPOD_ALIAS" "$@"
+        ;;
+      *)
+        echo "runpod subcommand: push | pull-artifacts | ssh" >&2
+        exit 1
+        ;;
+    esac
+    ;;
+
   help|-h|--help|"")
     usage
     ;;

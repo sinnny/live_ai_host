@@ -1,0 +1,25 @@
+<!doctype html>
+<html lang="ko">
+<head>
+  <meta charset="utf-8" />
+  <title>Daramzzi sprite-puppet renderer</title>
+  <style>
+    html, body { margin: 0; padding: 0; background: #000; overflow: hidden; }
+    #stage { display: block; }
+    #status { position: fixed; top: 0; left: 0; font: 12px monospace; color: #0f0;
+              padding: 4px 8px; background: rgba(0,0,0,0.6); }
+  </style>
+  <script type="importmap">
+    {
+      "imports": {
+        "three": "https://unpkg.com/three@0.160.0/build/three.module.js"
+      }
+    }
+  </script>
+</head>
+<body>
+  <canvas id="stage"></canvas>
+  <div id="status">idle</div>
+  <script type="module" src="./main.js"></script>
+</body>
+</html>

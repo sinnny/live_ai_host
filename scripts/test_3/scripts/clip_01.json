@@ -1,0 +1,106 @@
+{
+  "schema_version": 1,
+  "title": "다람찌 첫 라이브 — 호두과자 소개",
+  "language": "ko",
+  "default_state": {
+    "expression": "neutral",
+    "tail": "relaxed",
+    "ears": "up"
+  },
+  "segments": [
+    {
+      "text": "안녕하세요! 쇼호스트 김다람입니다. 오늘도 잘 부탁드려요.",
+      "expression": "neutral",
+      "tail": "wagging",
+      "ears": "up",
+      "pause_after_ms": 350
+    },
+    {
+      "text": "오늘은요, 제가 진짜진짜 좋아하는 호두과자를 들고 나왔어요.",
+      "expression": "embarrassed",
+      "ears": "perked",
+      "pause_after_ms": 250
+    },
+    {
+      "text": "음… 한 입만 먹어볼게요…",
+      "expression": "sneaky",
+      "ears": "flat",
+      "speed_modifier": 0.9,
+      "pause_after_ms": 150,
+      "sfx": "앙"
+    },
+    {
+      "text": "음… 음… 이거 진짜 맛있어요…",
+      "expression": "cheek_stuff",
+      "tail": "relaxed",
+      "ears": "flat",
+      "speed_modifier": 0.85,
+      "pause_after_ms": 400
+    },
+    {
+      "text": "앗 잠시만요, 대본에는 그냥 '맛있다'고만 적혀있는데… 진짜였어요.",
+      "expression": "laughing",
+      "tail": "wagging",
+      "ears": "up",
+      "pause_after_ms": 250
+    },
+    {
+      "text": "어머, 채팅 빠르시다! 음… 닉네임이… '도토리님'? 안녕하세요 도토리님!",
+      "expression": "confused",
+      "ears": "perked",
+      "pause_after_ms": 250
+    },
+    {
+      "text": "근데 저… 오늘 매출 0원이면 다음 방송 못 나올 수도 있어요…",
+      "expression": "pleading",
+      "tail": "curled",
+      "ears": "flat",
+      "speed_modifier": 0.95,
+      "pause_after_ms": 350
+    },
+    {
+      "text": "한 봉지만 더 사주시면 안 돼요…?",
+      "expression": "pleading",
+      "tail": "curled",
+      "ears": "flat",
+      "pause_after_ms": 400
+    },
+    {
+      "text": "어! 방금 주문 들어왔어요! 진짜요?!",
+      "expression": "panic",
+      "tail": "puffed",
+      "ears": "perked",
+      "pause_after_ms": 200
+    },
+    {
+      "text": "감사합니다! 정말정말 감사합니다!!",
+      "expression": "victory",
+      "tail": "alert",
+      "ears": "up",
+      "pause_after_ms": 350
+    },
+    {
+      "text": "어… 너무 신나서 또 한 입 먹을 뻔했네요. 앗 이거 먹으면 안 되는데…",
+      "expression": "sneaky",
+      "tail": "wagging",
+      "ears": "flat",
+      "speed_modifier": 0.95,
+      "pause_after_ms": 300
+    },
+    {
+      "text": "어… 점점 졸려오는데… 안 졸아요! 절대 안 졸아요!",
+      "expression": "sleepy",
+      "tail": "curled",
+      "ears": "flat",
+      "speed_modifier": 0.9,
+      "pause_after_ms": 250
+    },
+    {
+      "text": "그럼 오늘 방송은 여기까지예요. 오늘도 안 잘렸어요. 내일도 와주세요.",
+      "expression": "neutral",
+      "tail": "relaxed",
+      "ears": "up",
+      "pause_after_ms": 200
+    }
+  ]
+}

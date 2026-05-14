@@ -1,0 +1,20 @@
+{
+  "resolution": [1920, 1080],
+  "fps": 60,
+  "background_color": "#F8F1E6",
+  "character_position": { "x": 960, "y": 720 },
+  "character_scale": 0.8,
+  "idle_motion": {
+    "y_sine_amplitude_px": 6,
+    "y_sine_period_ms": 2400,
+    "x_jitter_amplitude_px": 1,
+    "blink_period_ms_min": 4000,
+    "blink_period_ms_max": 7000
+  },
+  "crossfade": {
+    "expression_ms": 300,
+    "tail_ms": 300,
+    "ears_ms": 200,
+    "mouth_ms": 50
+  }
+}
