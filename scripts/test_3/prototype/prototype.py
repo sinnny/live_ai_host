@@ -70,14 +70,14 @@ def validate(script_path: str) -> None:
     }, ensure_ascii=False, indent=2))
 
 
-@cli.command("voice-ref")
+@cli.command("voice-ref", context_settings={"ignore_unknown_options": True})
 @click.option("--output", "out", required=True, type=click.Path(dir_okay=False))
-@click.option("--text", default=None, help="Korean reference text; default in tts.py")
-def voice_ref(out: str, text: str | None) -> None:
-    """Delegate to tts.py voice-ref."""
-    args = [sys.executable, str(HERE / "tts.py"), "voice-ref", "--output", out]
-    if text:
-        args += ["--text", text]
+@click.argument("passthrough", nargs=-1, type=click.UNPROCESSED)
+def voice_ref(out: str, passthrough: tuple[str, ...]) -> None:
+    """Delegate to tts.py voice-ref. All other flags (--mode, --instruct,
+    --reference-wav, --trim-silence/--no-trim-silence, --text) pass through.
+    """
+    args = [sys.executable, str(HERE / "tts.py"), "voice-ref", "--output", out, *passthrough]
     proc = subprocess.run(args)
     sys.exit(proc.returncode)
 
