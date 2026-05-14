@@ -75,14 +75,19 @@ pip install -q \
     timm kornia \
     jsonschema librosa soundfile
 
-# AI-Toolkit (Ostris) — LoRA trainer
+# AI-Toolkit (Ostris) — LoRA trainer.
+# Not pip-installable (no setup.py/pyproject.toml); we invoke run.py directly
+# via $AI_TOOLKIT_ROOT/run.py, so we only need its requirements installed.
 if [ ! -d "$AI_TOOLKIT_ROOT/.git" ]; then
   echo "[setup_runpod] cloning AI-Toolkit..."
   git clone --depth 1 https://github.com/ostris/ai-toolkit.git "$AI_TOOLKIT_ROOT"
-  ( cd "$AI_TOOLKIT_ROOT" && pip install -r requirements.txt -q || true )
-  ( cd "$AI_TOOLKIT_ROOT" && pip install -e . -q )
 else
   echo "[setup_runpod] AI-Toolkit already at $AI_TOOLKIT_ROOT — skipping clone"
+fi
+if [ -f "$AI_TOOLKIT_ROOT/requirements.txt" ]; then
+  echo "[setup_runpod] installing AI-Toolkit requirements (idempotent)..."
+  pip install -q -r "$AI_TOOLKIT_ROOT/requirements.txt" || \
+    echo "[setup_runpod] WARN: some AI-Toolkit deps failed to install; pipeline may still work for our path"
 fi
 
 # CosyVoice 2 — needed only for the prototype pipeline; install if missing

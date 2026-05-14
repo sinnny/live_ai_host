@@ -56,13 +56,13 @@ RUN pip install \
 # BiRefNet — load from HF transformers (model code in trust_remote_code repo)
 RUN pip install timm kornia
 
-# AI-Toolkit (Ostris) — installed from source; pinned tag set in build args
+# AI-Toolkit (Ostris) — installed from source; pinned tag set in build args.
+# Not pip-installable (no setup.py/pyproject.toml); we invoke run.py directly.
 ARG AI_TOOLKIT_REF=main
 RUN git clone https://github.com/ostris/ai-toolkit.git /opt/ai-toolkit \
     && cd /opt/ai-toolkit \
     && git checkout "${AI_TOOLKIT_REF}" \
-    && pip install -r requirements.txt || true \
-    && pip install -e .
+    && pip install -r requirements.txt || true
 
 ENV PATH="/opt/ai-toolkit:${PATH}" \
     AI_TOOLKIT_ROOT="/opt/ai-toolkit"
