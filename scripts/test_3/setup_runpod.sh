@@ -109,13 +109,28 @@ if [ -f "$AI_TOOLKIT_ROOT/requirements.txt" ]; then
     echo "[setup_runpod] WARN: some AI-Toolkit deps failed to install; pipeline may still work for our path"
 fi
 
-# CosyVoice 2 — needed only for the prototype pipeline; install if missing
+# CosyVoice 2 — needed only for the prototype pipeline; install if missing.
+# IMPORTANT: openai-whisper is in CosyVoice's requirements.txt but pulls in
+# `pkg_resources` from setuptools — newer setuptools dropped it, so pip's
+# isolated-build env fails. We install openai-whisper FIRST with
+# --no-build-isolation (system setuptools still has pkg_resources), then run
+# CosyVoice's requirements.txt so the remaining deps (hyperpyyaml, etc.)
+# install cleanly.
 if [ ! -d "/opt/cosyvoice/.git" ]; then
   echo "[setup_runpod] cloning CosyVoice 2..."
   git clone --depth 1 --recursive https://github.com/FunAudioLLM/CosyVoice.git /opt/cosyvoice
-  ( cd /opt/cosyvoice && pip install -r requirements.txt -q || true )
 else
-  echo "[setup_runpod] CosyVoice already at /opt/cosyvoice — skipping"
+  echo "[setup_runpod] CosyVoice already at /opt/cosyvoice — skipping clone"
+fi
+
+echo "[setup_runpod] installing openai-whisper with --no-build-isolation (bypasses pkg_resources bug)..."
+pip install -q --no-build-isolation openai-whisper || \
+  echo "[setup_runpod] WARN: openai-whisper install failed; CosyVoice still usable for our path"
+
+if [ -f /opt/cosyvoice/requirements.txt ]; then
+  echo "[setup_runpod] installing CosyVoice requirements (idempotent)..."
+  pip install -q -r /opt/cosyvoice/requirements.txt || \
+    echo "[setup_runpod] WARN: some CosyVoice deps failed; rerun manually if voice-ref breaks"
 fi
 
 # Rhubarb Lip Sync — release binary
