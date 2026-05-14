@@ -9,20 +9,20 @@
   },
   "segments": [
     {
-      "text": "안녕하세요! 쇼호스트 김다람입니다. 오늘도 잘 부탁드려요.",
+      "text": "안녕하세요! 쇼호스트 다람찌예요! 헤헤, 오늘도 잘 부탁드려요!",
       "expression": "neutral",
       "tail": "wagging",
       "ears": "up",
       "pause_after_ms": 350
     },
     {
-      "text": "오늘은요, 제가 진짜진짜 좋아하는 호두과자를 들고 나왔어요.",
+      "text": "오늘은요, 다람찌가 진짜진짜 좋아하는 호두과자를 들고 나왔어요!",
       "expression": "embarrassed",
       "ears": "perked",
       "pause_after_ms": 250
     },
     {
-      "text": "음… 한 입만 먹어볼게요…",
+      "text": "음… 다람찌 한 입만 먹어볼게요…",
       "expression": "sneaky",
       "ears": "flat",
       "speed_modifier": 0.9,
@@ -51,7 +51,7 @@
       "pause_after_ms": 250
     },
     {
-      "text": "근데 저… 오늘 매출 0원이면 다음 방송 못 나올 수도 있어요…",
+      "text": "근데 저… 다람찌 오늘 매출 0원이면, 다음 방송 못 나올 수도 있어요…",
       "expression": "pleading",
       "tail": "curled",
       "ears": "flat",
@@ -96,7 +96,7 @@
       "pause_after_ms": 250
     },
     {
-      "text": "그럼 오늘 방송은 여기까지예요. 오늘도 안 잘렸어요. 내일도 와주세요.",
+      "text": "그럼 오늘 방송은 여기까지예요. 다람찌 오늘도 안 잘렸어요! 내일도 와주세요!",
       "expression": "neutral",
       "tail": "relaxed",
       "ears": "up",
