@@ -128,8 +128,13 @@ pip install -q --no-build-isolation openai-whisper || \
   echo "[setup_runpod] WARN: openai-whisper install failed; CosyVoice still usable for our path"
 
 if [ -f /opt/cosyvoice/requirements.txt ]; then
-  echo "[setup_runpod] installing CosyVoice requirements (idempotent)..."
-  pip install -q -r /opt/cosyvoice/requirements.txt || \
+  echo "[setup_runpod] installing CosyVoice requirements (idempotent, --no-build-isolation)..."
+  # CosyVoice pins openai-whisper==20231117 which fails the pkg_resources sdist
+  # build under modern setuptools. Strip that pin (we already installed a newer,
+  # API-compatible openai-whisper above) and use --no-build-isolation for the
+  # rest so any other sdist builds use system setuptools (which has pkg_resources).
+  grep -v -i "openai-whisper" /opt/cosyvoice/requirements.txt > /tmp/cv_reqs_filtered.txt
+  pip install -q --no-build-isolation -r /tmp/cv_reqs_filtered.txt || \
     echo "[setup_runpod] WARN: some CosyVoice deps failed; rerun manually if voice-ref breaks"
 fi
 
