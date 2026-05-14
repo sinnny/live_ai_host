@@ -59,20 +59,43 @@ def cli() -> None:
     """CosyVoice 2 TTS wrapper for the Daramzzi prototype."""
 
 
+CROSS_LINGUAL_PROMPT = Path("/opt/cosyvoice/asset/cross_lingual_prompt.wav")
+ZERO_SHOT_PROMPT = Path("/opt/cosyvoice/asset/zero_shot_prompt.wav")
+
+
 @cli.command("voice-ref")
 @click.option("--output", "out", required=True, type=click.Path(dir_okay=False))
 @click.option("--text", default=DEFAULT_REF_TEXT, show_default=False,
               help="Korean text the reference voice will read (~10s).")
-def voice_ref(out: str, text: str) -> None:
-    """One-time bootstrap: render `text` with CosyVoice 2's default KR female preset."""
+@click.option("--reference-wav", default=str(CROSS_LINGUAL_PROMPT), show_default=True,
+              type=click.Path(),
+              help="Reference voice WAV (bundled with CosyVoice 2). Used as the voice "
+                   "timbre for cross-lingual Korean generation.")
+def voice_ref(out: str, text: str, reference_wav: str) -> None:
+    """One-time bootstrap: render `text` as Korean speech using CosyVoice 2's
+    cross-lingual path with a bundled reference WAV as the voice timbre source.
+
+    CosyVoice 2-0.5B has zero SFT speakers — it's purely zero-shot/cross-lingual.
+    `inference_cross_lingual` takes a reference WAV (any language) and generates
+    the requested text (in our case Korean) using that voice's timbre.
+    """
     out_path = Path(out)
     out_path.parent.mkdir(parents=True, exist_ok=True)
 
+    ref_path = Path(reference_wav)
+    if not ref_path.exists():
+        raise click.ClickException(
+            f"Reference WAV not found: {ref_path}. CosyVoice 2 ships two: "
+            f"{CROSS_LINGUAL_PROMPT} and {ZERO_SHOT_PROMPT}."
+        )
+
+    # Load reference at 16 kHz (what CosyVoice 2's frontend expects).
+    from cosyvoice.utils.file_utils import load_wav
+    prompt_speech_16k = load_wav(str(ref_path), 16000)
+
     model = _load_cosyvoice()
-    # CosyVoice 2 SFT path: instruct mode with a built-in voice id. "Korean-female"
-    # is the standard preset; the model card lists supported speaker ids.
     samples = []
-    for chunk in model.inference_sft(text, "中文女"):  # KR uses 中文女 mixed-tone default
+    for chunk in model.inference_cross_lingual(text, prompt_speech_16k, stream=False):
         samples.append(chunk["tts_speech"].cpu().numpy().flatten())
     audio = np.concatenate(samples) if samples else np.zeros(0, dtype=np.float32)
 
@@ -88,6 +111,8 @@ def voice_ref(out: str, text: str) -> None:
         "output": str(out_path),
         "duration_sec": len(audio) / SAMPLE_RATE,
         "transcript": str(sidecar),
+        "reference_wav": str(ref_path),
+        "inference_mode": "cross_lingual",
     }, ensure_ascii=False, indent=2))
 
 
