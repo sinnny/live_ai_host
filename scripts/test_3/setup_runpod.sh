@@ -129,13 +129,15 @@ pip install -q --no-build-isolation openai-whisper || \
 
 if [ -f /opt/cosyvoice/requirements.txt ]; then
   echo "[setup_runpod] installing CosyVoice requirements (idempotent, --no-build-isolation)..."
-  # CosyVoice pins openai-whisper==20231117 which fails the pkg_resources sdist
-  # build under modern setuptools. Strip that pin (we already installed a newer,
-  # API-compatible openai-whisper above) and use --no-build-isolation for the
-  # rest so any other sdist builds use system setuptools (which has pkg_resources).
-  grep -v -i "openai-whisper" /opt/cosyvoice/requirements.txt > /tmp/cv_reqs_filtered.txt
+  # CosyVoice's requirements.txt has two known-problematic pins for our use case:
+  #   - openai-whisper==20231117 → sdist fails on pkg_resources (modern setuptools)
+  #   - tensorrt-cu12-libs       → requires wheel_stub (not available in build env)
+  # Neither is needed for offline voice-ref + simple TTS. Strip both. Newer
+  # openai-whisper (installed above) is API-compatible for our path.
+  grep -v -i -E "openai-whisper|tensorrt" /opt/cosyvoice/requirements.txt \
+    > /tmp/cv_reqs_filtered.txt
   pip install -q --no-build-isolation -r /tmp/cv_reqs_filtered.txt || \
-    echo "[setup_runpod] WARN: some CosyVoice deps failed; rerun manually if voice-ref breaks"
+    echo "[setup_runpod] WARN: some CosyVoice deps failed; voice-ref may need manual hyperpyyaml/conformer/onnxruntime install"
 fi
 
 # Rhubarb Lip Sync — release binary
