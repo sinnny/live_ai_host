@@ -1,0 +1,22 @@
+# Only docs/report/ is needed for Vercel deployment
+# Exclude all heavy dev artifacts and unrelated source
+
+tools/
+outputs/
+inputs/
+scripts/
+comfy_workflows/
+logs/
+docs/phase_0_v1/
+docs/phase_0_v2/
+docs/characters/
+docs/prd.md
+docs/README*
+.claude/
+.git/
+*.lock
+pyproject.toml
+dev
+.DS_Store
+.env*
+node_modules/
