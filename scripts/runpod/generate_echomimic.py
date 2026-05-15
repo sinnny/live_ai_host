@@ -44,6 +44,15 @@ DEFAULT_PROMPT = (
     "head movement. Don't blink too often. Preserve background integrity."
 )
 
+# Test B1 (Phase 0 v2 post-mortem #1 §8): EchoMimic v3 on stylized Daramzzi.
+# Cartoon squirrel mascot, gentle natural motion. Lip-sync imprecision is on-brand
+# per PRD §1.2 "obviously AI / failure-modes-as-style" — we want motion, not realism.
+DARAMZZI_PROMPT = (
+    "A cute cartoon squirrel mascot character with a beige apron and headset, "
+    "speaking naturally with gentle head movement. Eyes mostly open and alert, "
+    "rare blinks. Earnest, friendly expression. Preserve character design and background."
+)
+
 
 def ensure_audio_16k(src: Path) -> Path:
     """Resample input audio to 16 kHz mono once; cache result. wav2vec2 expects 16 kHz."""
@@ -159,11 +168,20 @@ def main():
     p.add_argument("--variant", choices=["flash", "preview"], default="flash")
     p.add_argument("--resolution", type=int, choices=[768, 1024], default=1024)
     p.add_argument("--tests", default="hero,variant_3q,variant_speaking",
-                   help="comma-separated subset of: " + ",".join(TESTS))
+                   help="comma-separated subset of: " + ",".join(TESTS) +
+                        ". Ignored if --image-path and --audio-path are passed.")
+    p.add_argument("--image-path", type=Path, default=None,
+                   help="explicit input image (overrides --tests). Use for B1/Daramzzi.")
+    p.add_argument("--audio-path", type=Path, default=None,
+                   help="explicit input audio (overrides default reference_korean_30s.wav).")
+    p.add_argument("--test-name", default=None,
+                   help="output folder name when using --image-path. Default: image stem.")
     p.add_argument("--video-length", type=int, default=None,
                    help="sliding-window chunk size; default 65@1024, 81@768. Drop if OOM.")
     p.add_argument("--seed", type=int, default=43)
-    p.add_argument("--prompt", default=DEFAULT_PROMPT)
+    p.add_argument("--prompt", default=None,
+                   help="text prompt; default is photoreal-human DEFAULT_PROMPT, "
+                        "or DARAMZZI_PROMPT when --image-path stem starts with 'daramzzi' or 'seed'.")
     p.add_argument("--negative-prompt", default="",
                    help="passed to infer_flash.py --negative_prompt; default empty (run_flash.sh default)")
     p.add_argument("--guidance-scale", type=float, default=6.0,
@@ -185,49 +203,67 @@ def main():
     if args.video_length is None:
         args.video_length = default_video_length(args.resolution)
 
-    tests = [t.strip() for t in args.tests.split(",") if t.strip()]
-    bad = [t for t in tests if t not in TESTS]
-    if bad:
-        sys.exit(f"Unknown test(s) {bad}. Available: {list(TESTS)}")
-
-    if not AUDIO_SRC.exists():
-        sys.exit(f"Audio not found: {AUDIO_SRC}")
+    # Audio source: --audio-path override, else the legacy photoreal reference.
+    audio_src = args.audio_path if args.audio_path else AUDIO_SRC
+    if not audio_src.exists():
+        sys.exit(f"Audio not found: {audio_src}")
     if args.audio_preprocessing == "enhanced":
-        audio_path = ensure_audio_enhanced(AUDIO_SRC)
+        audio_path = ensure_audio_enhanced(audio_src)
     else:
-        audio_path = ensure_audio_16k(AUDIO_SRC)
+        audio_path = ensure_audio_16k(audio_src)
+
+    # Build the (test_name, image_path) work list. Two modes:
+    #   --image-path  → single explicit run (Daramzzi / B1)
+    #   --tests       → original photoreal sweep (legacy)
+    if args.image_path:
+        if not args.image_path.exists():
+            sys.exit(f"Image not found: {args.image_path}")
+        args.image_path = args.image_path.resolve()
+        test_name = args.test_name or args.image_path.stem
+        work = [(test_name, args.image_path)]
+        stem_lower = args.image_path.stem.lower()
+        prompt = args.prompt or (
+            DARAMZZI_PROMPT if (stem_lower.startswith("daramzzi") or stem_lower.startswith("seed"))
+            else DEFAULT_PROMPT
+        )
+    else:
+        tests = [t.strip() for t in args.tests.split(",") if t.strip()]
+        bad = [t for t in tests if t not in TESTS]
+        if bad:
+            sys.exit(f"Unknown test(s) {bad}. Available: {list(TESTS)}")
+        work = [(t, PROJECT_ROOT / "inputs/photos" / TESTS[t]) for t in tests]
+        prompt = args.prompt or DEFAULT_PROMPT
 
     print(f"\n=== EchoMimic v3 Flash · {args.resolution}x{args.resolution} · "
-          f"vlen={args.video_length} · tests={tests} ===\n")
+          f"vlen={args.video_length} · runs={[w[0] for w in work]} ===\n")
 
     results = []
-    for t in tests:
-        image_path = PROJECT_ROOT / "inputs/photos" / TESTS[t]
+    for test_name, image_path in work:
         if not image_path.exists():
-            print(f"SKIP {t}: input image not found at {image_path}")
-            results.append({"test_name": t, "error": "input image missing"})
+            print(f"SKIP {test_name}: input image not found at {image_path}")
+            results.append({"test_name": test_name, "error": "input image missing"})
             continue
         try:
             meta = run_flash(
-                test_name=t,
+                test_name=test_name,
                 image_path=image_path,
                 audio_path=audio_path,
                 resolution=args.resolution,
                 video_length=args.video_length,
                 seed=args.seed,
-                prompt=args.prompt,
+                prompt=prompt,
                 negative_prompt=args.negative_prompt,
                 guidance_scale=args.guidance_scale,
                 audio_guidance_scale=args.audio_guidance_scale,
             )
         except Exception as e:
-            meta = {"test_name": t, "error": repr(e)}
+            meta = {"test_name": test_name, "error": repr(e)}
 
-        sidecar = OUT_ROOT / f"flash_{args.resolution}" / t / "_meta.json"
+        sidecar = OUT_ROOT / f"flash_{args.resolution}" / test_name / "_meta.json"
         sidecar.parent.mkdir(parents=True, exist_ok=True)
         sidecar.write_text(json.dumps(meta, indent=2))
         results.append(meta)
-        print(f"--- {t}: exit={meta.get('exit_code')} time={meta.get('wall_seconds', 'n/a')}s ---\n")
+        print(f"--- {test_name}: exit={meta.get('exit_code')} time={meta.get('wall_seconds', 'n/a')}s ---\n")
 
     print("\n=== Summary ===")
     for r in results:

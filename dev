@@ -23,6 +23,9 @@ Phase 0 v2 — local (no GPU needed):
                             from FSD §3.2 defaults
   smoke                     Lint check + schema check + JS syntax sanity
                             (everything that can run without RunPod)
+  renderer start            Start R-Solo realtime renderer prototype
+                            (HTTP server on :8765 + opens browser)
+  renderer stop             Stop the renderer HTTP server
 
 Phase 0 v2 — remote (run inside RunPod via Docker):
   mascot build              Build the make_mascot docker image
@@ -102,6 +105,52 @@ print('  segments:', len(script.get('segments', [])))
       node --check "$f" || echo "    fail: $f"
     done
     echo "[smoke] done"
+    ;;
+
+  renderer)
+    # R-Solo realtime renderer prototype — pure local, no GPU dependency.
+    # Assets must already exist at scripts/test_3/renderer_realtime/assets/
+    #   (talking.mp4, idle.png, voice.wav) — see docs/phase_0_v2/realtime_interaction_plan.md
+    sub="${1:-start}"
+    shift || true
+    RENDERER_DIR="$PROJECT_ROOT/scripts/test_3/renderer_realtime"
+    PORT=8765
+    case "$sub" in
+      start)
+        if [ ! -f "$RENDERER_DIR/assets/talking.mp4" ]; then
+          echo "ERROR: $RENDERER_DIR/assets/talking.mp4 missing." >&2
+          echo "       Generate via EchoMimic v3 first (see realtime_interaction_plan.md §3)." >&2
+          exit 1
+        fi
+        EXISTING=$(lsof -ti :$PORT 2>/dev/null || true)
+        if [ -n "$EXISTING" ]; then
+          echo "killing existing process on :$PORT (pid=$EXISTING)"
+          kill -9 $EXISTING 2>/dev/null || true
+          sleep 0.5
+        fi
+        cd "$RENDERER_DIR"
+        nohup python3 -m http.server $PORT --bind 127.0.0.1 > /tmp/renderer_http.log 2>&1 &
+        HTTP_PID=$!
+        echo "http.server pid=$HTTP_PID port=$PORT (log: /tmp/renderer_http.log)"
+        sleep 0.5
+        URL="http://127.0.0.1:$PORT/"
+        echo "opening $URL"
+        open "$URL"
+        ;;
+      stop)
+        EXISTING=$(lsof -ti :$PORT 2>/dev/null || true)
+        if [ -n "$EXISTING" ]; then
+          kill -9 $EXISTING
+          echo "killed renderer http.server (pid=$EXISTING)"
+        else
+          echo "no renderer running on :$PORT"
+        fi
+        ;;
+      *)
+        echo "renderer subcommand: start | stop" >&2
+        exit 1
+        ;;
+    esac
     ;;
 
   mascot)

@@ -1,0 +1,16 @@
+{
+  "test_name": "daramzzi_b1_768",
+  "variant": "flash",
+  "resolution": 768,
+  "video_length": 81,
+  "seed": 43,
+  "image_path": "/workspace/live_ai_host/scripts/test_3/mascot/daramzzi/work/02_seed/seed.png",
+  "audio_path": "/workspace/live_ai_host/outputs/stage4_videos/_audio_16k/daramzzi_voice_b1.16k.enh.wav",
+  "save_dir": "/workspace/live_ai_host/outputs/stage4_videos/flash_768/daramzzi_b1_768",
+  "wall_seconds": 482.1,
+  "exit_code": 0,
+  "prompt": "A cute cartoon squirrel mascot character with a beige apron and headset, speaking naturally with gentle head movement and soft natural blinks. Earnest, friendly expression. Preserve character design and background.",
+  "negative_prompt": "",
+  "guidance_scale": 6.0,
+  "audio_guidance_scale": 3.0
+}

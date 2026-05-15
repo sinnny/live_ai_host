@@ -1,0 +1,98 @@
+<!doctype html>
+<html lang="ko">
+<head>
+  <meta charset="utf-8" />
+  <title>다람찌 실시간 렌더러 — R-Solo prototype</title>
+  <style>
+    :root {
+      --stage-size: 768px;
+      --crossfade-ms: 200;
+    }
+    html, body { margin: 0; padding: 0; background: #1a1a1a; color: #eee;
+                 font: 14px -apple-system, BlinkMacSystemFont, sans-serif; }
+    #app { max-width: var(--stage-size); margin: 24px auto; }
+    h1 { font-size: 16px; margin: 0 0 16px; color: #888; }
+    #stage {
+      position: relative;
+      width: var(--stage-size);
+      height: var(--stage-size);
+      background: #000;
+      border-radius: 8px;
+      overflow: hidden;
+    }
+    #stage > * {
+      position: absolute;
+      inset: 0;
+      width: 100%;
+      height: 100%;
+      object-fit: contain;
+      transition: opacity calc(var(--crossfade-ms) * 1ms) ease-in-out;
+    }
+    #layer-idle  { opacity: 1; z-index: 1; }
+    #layer-talk  { opacity: 0; z-index: 2; }
+    body.talking #layer-idle { opacity: 0; }
+    body.talking #layer-talk { opacity: 1; }
+
+    #controls { margin-top: 16px; display: flex; gap: 12px; align-items: center; }
+    button {
+      padding: 10px 20px;
+      font-size: 14px;
+      border: 1px solid #555;
+      background: #2a2a2a;
+      color: #eee;
+      border-radius: 6px;
+      cursor: pointer;
+    }
+    button:hover { background: #3a3a3a; }
+    button.primary { background: #2a5a8a; border-color: #4a7aaa; }
+    button:disabled { opacity: 0.4; cursor: not-allowed; }
+
+    #status {
+      margin-top: 12px;
+      padding: 12px;
+      background: #111;
+      border-radius: 6px;
+      font-family: ui-monospace, Menlo, monospace;
+      font-size: 12px;
+      color: #0f0;
+      min-height: 80px;
+      white-space: pre-wrap;
+    }
+    .key { color: #888; }
+    .val { color: #0f0; }
+    .warn { color: #fa0; }
+  </style>
+</head>
+<body>
+  <div id="app">
+    <h1>다람찌 실시간 렌더러 — R-Solo prototype</h1>
+
+    <div id="stage">
+      <img    id="layer-idle" src="./assets/idle.png" alt="idle" />
+      <video  id="layer-talk" src="./assets/talking.mp4" muted loop playsinline></video>
+    </div>
+
+    <div id="controls">
+      <button id="btn-talk" class="primary">▶ 말 시작 (녹음 voice.wav)</button>
+      <button id="btn-idle" disabled>■ 말 끝 (idle)</button>
+      <span style="margin-left: auto; color: #888;">
+        crossfade: <input type="number" id="fade-ms" value="200" min="0" max="1000" step="50" style="width: 60px; background:#222; color:#eee; border:1px solid #444; padding:4px;"> ms
+      </span>
+    </div>
+
+    <div id="tts-row" style="margin-top: 12px; display: flex; gap: 8px; align-items: center;">
+      <input type="text" id="tts-text" placeholder="여기에 한국어 텍스트 입력 후 Enter 또는 말하기 버튼"
+             value="안녕하세요! 쇼호스트 다람찌예요! 헤헤, 오늘도 잘 부탁드려요!"
+             style="flex: 1; padding: 10px; background: #222; color: #eee; border: 1px solid #444; border-radius: 6px; font-size: 14px;">
+      <select id="tts-voice" style="padding: 10px; background: #222; color: #eee; border: 1px solid #444; border-radius: 6px;">
+        <option value="">(보이스 자동)</option>
+      </select>
+      <button id="btn-speak" class="primary">▶ TTS로 말하기</button>
+    </div>
+
+    <div id="status">로딩 중…</div>
+  </div>
+
+  <script type="module" src="./realtime.js"></script>
+</body>
+</html>
