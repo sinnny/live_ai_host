@@ -34,3 +34,4 @@ scripts/test_3/prototype_runs/
 scripts/test_3/voice/*.wav
 scripts/test_3/voice/*.txt
 
+.vercel
