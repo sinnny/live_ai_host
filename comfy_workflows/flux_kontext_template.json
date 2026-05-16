@@ -1,0 +1,116 @@
+{
+  "_comment": "API-format ComfyUI workflow for Flux Kontext Dev — identity-preserving image edit. Input image → FluxKontextImageScale (matches Kontext training resolutions) → VAEEncode → ReferenceLatent (passes the encoded reference into the conditioning) → KSampler with cfg=1.0 + FluxGuidance=2.5. generate_kontext.py patches the prompt / seed / input-image nodes per iteration.",
+  "_template_targets": {
+    "positive_prompt_node_id": "20",
+    "seed_node_id": "30",
+    "steps_node_id": "30",
+    "input_image_node_id": "10"
+  },
+  "_notes": [
+    "Node names assume ComfyUI v0.3.30+ which has native Flux Kontext support.",
+    "If FluxKontextImageScale is not found, update ComfyUI: cd /workspace/ComfyUI && git pull",
+    "Model file: flux1-dev-kontext_fp8_scaled.safetensors from Comfy-Org/flux1-kontext-dev_ComfyUI",
+    "VAE file: ae.safetensors (NOT flux-vae-bf16 — Kontext example uses the original ae.safetensors)",
+    "Reuses t5xxl_fp8 + clip_l from PuLID setup."
+  ],
+  "workflow": {
+    "1": {
+      "class_type": "UNETLoader",
+      "inputs": {
+        "unet_name": "flux1-dev-kontext_fp8_scaled.safetensors",
+        "weight_dtype": "fp8_e4m3fn"
+      }
+    },
+    "2": {
+      "class_type": "DualCLIPLoader",
+      "inputs": {
+        "clip_name1": "t5xxl_fp8_e4m3fn.safetensors",
+        "clip_name2": "clip_l.safetensors",
+        "type": "flux",
+        "device": "default"
+      }
+    },
+    "3": {
+      "class_type": "VAELoader",
+      "inputs": {
+        "vae_name": "ae.safetensors"
+      }
+    },
+    "10": {
+      "class_type": "LoadImage",
+      "inputs": {
+        "image": "project_photos/hero.png"
+      }
+    },
+    "11": {
+      "class_type": "FluxKontextImageScale",
+      "inputs": {
+        "image": ["10", 0]
+      }
+    },
+    "12": {
+      "class_type": "VAEEncode",
+      "inputs": {
+        "pixels": ["11", 0],
+        "vae": ["3", 0]
+      }
+    },
+    "20": {
+      "class_type": "CLIPTextEncode",
+      "inputs": {
+        "text": "same person, slight smile, looking at camera, 3/4 right angle",
+        "clip": ["2", 0]
+      }
+    },
+    "21": {
+      "class_type": "ReferenceLatent",
+      "inputs": {
+        "conditioning": ["20", 0],
+        "latent": ["12", 0]
+      }
+    },
+    "22": {
+      "class_type": "FluxGuidance",
+      "inputs": {
+        "conditioning": ["21", 0],
+        "guidance": 2.5
+      }
+    },
+    "23": {
+      "class_type": "CLIPTextEncode",
+      "inputs": {
+        "text": "",
+        "clip": ["2", 0]
+      }
+    },
+    "30": {
+      "class_type": "KSampler",
+      "inputs": {
+        "model": ["1", 0],
+        "seed": 42,
+        "steps": 20,
+        "cfg": 1.0,
+        "sampler_name": "euler",
+        "scheduler": "simple",
+        "denoise": 1.0,
+        "positive": ["22", 0],
+        "negative": ["23", 0],
+        "latent_image": ["12", 0]
+      }
+    },
+    "40": {
+      "class_type": "VAEDecode",
+      "inputs": {
+        "samples": ["30", 0],
+        "vae": ["3", 0]
+      }
+    },
+    "41": {
+      "class_type": "SaveImage",
+      "inputs": {
+        "images": ["40", 0],
+        "filename_prefix": "kontext_test"
+      }
+    }
+  }
+}

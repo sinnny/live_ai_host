@@ -37,6 +37,12 @@ Phase 0 v2 — remote (run inside RunPod via Docker):
   prototype render <clip>   Run full TTS → phoneme → render → encode pipeline
   prototype validate <clip> Schema-validate a clip script
 
+Phase 0 v2 — Kontext Dev test (alternative to PuLID for identity variants):
+  kontext bootstrap         git push + SSH pod + run bootstrap_kontext.sh
+  kontext smoke             SSH pod + run generate_kontext.py --limit 1 (1 image)
+  kontext run [args]        SSH pod + run generate_kontext.py (full 25-image batch)
+  kontext pull              rsync outputs/kontext_test/ from RunPod to local
+
 RunPod helpers:
   runpod push               git push, then ssh runpod 'git pull' (assumes ~/.ssh/config alias 'runpod')
   runpod pull-artifacts     rsync atlas/, prototype_runs/ from RunPod to local
@@ -209,6 +215,33 @@ print('  segments:', len(script.get('segments', [])))
         ;;
       *)
         echo "prototype subcommand: build | voice-ref | validate <script> | render <script>" >&2
+        exit 1
+        ;;
+    esac
+    ;;
+
+  kontext)
+    # Flux Kontext Dev identity-variant test — alternative to PuLID stage 2.
+    # All commands assume ~/.ssh/config has a 'runpod' alias pointing at the active pod.
+    sub="${1:-help}"
+    shift || true
+    case "$sub" in
+      bootstrap)
+        git -C "$PROJECT_ROOT" push
+        ssh "$RUNPOD_ALIAS" "cd $RUNPOD_REMOTE && git pull && bash scripts/runpod/bootstrap_kontext.sh"
+        ;;
+      smoke)
+        ssh "$RUNPOD_ALIAS" "cd $RUNPOD_REMOTE && python scripts/runpod/generate_kontext.py --limit 1"
+        ;;
+      run)
+        ssh "$RUNPOD_ALIAS" "cd $RUNPOD_REMOTE && python scripts/runpod/generate_kontext.py $*"
+        ;;
+      pull)
+        rsync -av "$RUNPOD_ALIAS:$RUNPOD_REMOTE/outputs/kontext_test/" \
+          "$PROJECT_ROOT/outputs/kontext_test/"
+        ;;
+      *)
+        echo "kontext subcommand: bootstrap | smoke | run [args] | pull" >&2
         exit 1
         ;;
     esac

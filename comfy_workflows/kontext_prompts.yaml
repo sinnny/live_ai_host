@@ -1,0 +1,66 @@
+# Flux Kontext Dev identity-variant prompts — Phase 0 v2 Kontext test.
+#
+# Apples-to-apples with stage2_prompts.yaml (PuLID stage 2):
+#   - same 5 variant names (3q_right, 3q_left_surprise, speaking, looking_down, warm_laugh)
+#   - same 5 seeds
+#   - same hero.png input
+# So we can directly compare PuLID outputs vs Kontext outputs side-by-side.
+#
+# Key difference from PuLID:
+#   - PuLID needs a "WHO" prefix in the prompt (it anchors identity via face encoder).
+#   - Kontext takes the identity from the input image; the prompt describes only WHAT TO CHANGE
+#     or WHAT THE OUTPUT SHOULD BE. Korean phenotype prefix is REMOVED — comes from the photo.
+#   - Kontext prompts are typically shorter and read like edit instructions.
+#
+# Total generations: 5 prompts × 5 seeds = 25 images.
+# Kontext uses one canonical step count (20-30 is standard); we lock to 20 for now,
+# can sweep later via --steps flag if results are noisy.
+
+input_image: "project_photos/hero.png"   # ComfyUI input/ relative path (symlinked by bootstrap)
+
+prompts:
+  - id: 1
+    name: "3q_right"
+    text: "same person, slight smile, looking at camera, 3/4 right angle, head turned slightly right"
+    purpose: "Head turning right; tests pose tolerance vs frontal hero"
+
+  - id: 2
+    name: "3q_left_surprise"
+    text: "same person, slight surprise expression, looking at camera, 3/4 left angle"
+    purpose: "Head turning left, expression variation"
+
+  - id: 3
+    name: "speaking"
+    text: "same person, speaking, mouth slightly open mid-word, looking at camera, broadcast presentation pose"
+    purpose: "Speaking-pose variant — REQUIRED INPUT for downstream talking-head stage"
+
+  - id: 4
+    name: "looking_down"
+    text: "same person, looking down at notes, thoughtful expression, slight smile"
+    purpose: "Idle 'reading' loop, eyes-not-on-camera test"
+
+  - id: 5
+    name: "warm_laugh"
+    text: "same person, warm genuine laugh, eyes crinkled with joy, looking at camera"
+    purpose: "Engagement variant, full expression range"
+
+# Sampling — Kontext default in ComfyUI examples is steps=20, guidance=2.5, euler/simple.
+# guidance is LOWER than regular Flux dev (3.5) because Kontext also takes the reference
+# latent as guidance signal; high CFG over-constrains and produces artifacts.
+steps: 20
+guidance: 2.5
+sampler: "euler"
+scheduler: "simple"
+
+# Same seed set as PuLID stage 2 for direct comparison
+seeds: [42, 1024, 7777, 31415, 9001]
+
+# Korean-specific failure modes to watch for (per phase_0_v2 evaluation criteria):
+#  - Monolid / single-eyelid "corrected" to double-eyelid
+#  - Skin tone drift
+#  - Face structure morphing (jaw, cheekbones)
+#  - Hair edge artifacts on profile shots
+#  - Epicanthic fold mishandled
+# Plus Kontext-specific:
+#  - Did the prompt actually take effect, or is it ignored (output ≈ input)?
+#  - Are non-face regions hallucinating (background, clothes shifting weirdly)?
