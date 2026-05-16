@@ -237,8 +237,15 @@ print('  segments:', len(script.get('segments', [])))
         ssh "$RUNPOD_ALIAS" "cd $RUNPOD_REMOTE && python scripts/runpod/generate_kontext.py $*"
         ;;
       pull)
-        rsync -av "$RUNPOD_ALIAS:$RUNPOD_REMOTE/outputs/kontext_test/" \
-          "$PROJECT_ROOT/outputs/kontext_test/"
+        # rsync may not be installed on minimal pod images; fall back to scp -r.
+        if ssh "$RUNPOD_ALIAS" 'command -v rsync >/dev/null 2>&1'; then
+          rsync -av "$RUNPOD_ALIAS:$RUNPOD_REMOTE/outputs/kontext_test/" \
+            "$PROJECT_ROOT/outputs/kontext_test/"
+        else
+          mkdir -p "$PROJECT_ROOT/outputs/kontext_test"
+          scp -r "$RUNPOD_ALIAS:$RUNPOD_REMOTE/outputs/kontext_test/*" \
+            "$PROJECT_ROOT/outputs/kontext_test/"
+        fi
         ;;
       *)
         echo "kontext subcommand: bootstrap | smoke | run [args] | pull" >&2
