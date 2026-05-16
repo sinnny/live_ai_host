@@ -10,7 +10,7 @@
     "Node names assume ComfyUI v0.3.30+ which has native Flux Kontext support.",
     "If FluxKontextImageScale is not found, update ComfyUI: cd /workspace/ComfyUI && git pull",
     "Model file: flux1-dev-kontext_fp8_scaled.safetensors from Comfy-Org/flux1-kontext-dev_ComfyUI",
-    "VAE file: ae.safetensors (NOT flux-vae-bf16 — Kontext example uses the original ae.safetensors)",
+    "VAE file: flux-vae-bf16.safetensors (Kijai/flux-fp8 repo — same VAE PuLID uses, works with Kontext too).",
     "Reuses t5xxl_fp8 + clip_l from PuLID setup."
   ],
   "workflow": {
@@ -33,7 +33,7 @@
     "3": {
       "class_type": "VAELoader",
       "inputs": {
-        "vae_name": "ae.safetensors"
+        "vae_name": "flux-vae-bf16.safetensors"
       }
     },
     "10": {

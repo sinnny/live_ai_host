@@ -93,15 +93,11 @@ echo "  [3/4] CLIP-L text encoder (~250 MB) → text_encoders/"
 "$HF" download comfyanonymous/flux_text_encoders clip_l.safetensors \
   --local-dir "$COMFYUI_DIR/models/text_encoders"
 
-echo "  [4/4] Flux VAE (ae.safetensors, ~335 MB) → vae/"
-"$HF" download Comfy-Org/flux1-kontext-dev_ComfyUI \
-  split_files/vae/ae.safetensors \
-  --local-dir "$COMFYUI_DIR/models"
-if [ -f "$COMFYUI_DIR/models/split_files/vae/ae.safetensors" ]; then
-  mv -n "$COMFYUI_DIR/models/split_files/vae/ae.safetensors" \
-    "$COMFYUI_DIR/models/vae/"
-  rm -rf "$COMFYUI_DIR/models/split_files"
-fi
+echo "  [4/4] Flux VAE bf16 (~335 MB) → vae/"
+# Note: Comfy-Org/flux1-kontext-dev_ComfyUI does NOT include a VAE in split_files/.
+# We reuse the proven Kijai flux-vae-bf16 — same one PuLID setup uses, works with Kontext.
+"$HF" download Kijai/flux-fp8 flux-vae-bf16.safetensors \
+  --local-dir "$COMFYUI_DIR/models/vae"
 
 # ----- 6. Symlink project inputs into ComfyUI's input/ -----
 echo ""
