@@ -6851,8 +6851,8 @@
 
           subgraph RT ["방송 중 · DURING BROADCAST"]
           direction TB
-          R1["<b>YouTube 댓글 수집</b><br /><small>pytchat · 1Hz polling</small>"] --> R2["<b>실시간 응답
-            스크립트</b><br /><small>Claude Sonnet 4.6 + Qdrant RAG</small>"]
+          R1["<b>실시간 댓글 수집</b><br /><small>pytchat · 1Hz polling</small>"] --> R2["<b>실시간 응답 스크립트</b><br /><small>Claude
+            Sonnet 4.6 + Qdrant RAG</small>"]
           R2 --> R3["<b>한국어 음성 즉석 합성</b><br /><small>CosyVoice 2 streaming</small>"]
           R3 --> R4["<b>음성 → 입 모양 timing</b><br /><small>Rhubarb Lip Sync</small>"]
           R4 --> R5["<b>캐릭터 입·표정 swap</b><br /><small>three.js sprite renderer</small>"]
