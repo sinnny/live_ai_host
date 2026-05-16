@@ -41,6 +41,11 @@ Phase 0 v2 — Kontext Dev test (alternative to PuLID for identity variants):
   kontext run [args]        SSH pod + run generate_kontext.py (full 25-image batch)
   kontext pull              rsync outputs/kontext_test/ from RunPod to local
 
+Phase 0 v2 — Sonic test (OSS realtime-ish lip sync, image+audio → video):
+  sonic bootstrap           git push + SSH pod + run bootstrap_sonic.sh
+  sonic run                 SSH pod + run generate_sonic.py (1 video)
+  sonic pull                scp outputs/sonic_test/ from RunPod to local
+
 RunPod helpers:
   runpod push               git push, then ssh runpod 'git pull' (assumes ~/.ssh/config alias 'runpod')
   runpod pull-artifacts     rsync atlas/, prototype_runs/ from RunPod to local
@@ -207,6 +212,31 @@ print('  segments:', len(script.get('segments', [])))
         ;;
       *)
         echo "prototype subcommand: build | voice-ref | validate <script> | render <script>" >&2
+        exit 1
+        ;;
+    esac
+    ;;
+
+  sonic)
+    # Sonic OSS lip sync — image+audio → video.
+    # All commands assume ~/.ssh/config has a 'runpod' alias pointing at the active pod.
+    sub="${1:-help}"
+    shift || true
+    case "$sub" in
+      bootstrap)
+        git -C "$PROJECT_ROOT" push
+        ssh "$RUNPOD_ALIAS" "cd $RUNPOD_REMOTE && git pull && bash scripts/runpod/bootstrap_sonic.sh"
+        ;;
+      run)
+        ssh "$RUNPOD_ALIAS" "cd $RUNPOD_REMOTE && python scripts/runpod/generate_sonic.py $*"
+        ;;
+      pull)
+        mkdir -p "$PROJECT_ROOT/outputs/sonic_test"
+        scp -r "$RUNPOD_ALIAS:$RUNPOD_REMOTE/outputs/sonic_test/*" \
+          "$PROJECT_ROOT/outputs/sonic_test/"
+        ;;
+      *)
+        echo "sonic subcommand: bootstrap | run | pull" >&2
         exit 1
         ;;
     esac
